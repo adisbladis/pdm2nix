@@ -49,6 +49,7 @@
           version = "2.0.0";
         });
         expected = {
+          format = "pyproject";
           meta = {
             broken = false;
             description = "Packrat parser interpreter";
@@ -56,7 +57,10 @@
           pname = "arpeggio";
           propagatedBuildInputs = [ ];
           version = "2.0.0";
-          src = null;
+          src = {
+            file = "Arpeggio-2.0.0.tar.gz";
+            hash = "sha256:d6b03839019bb8a68785f9292ee6a36b1954eb84b925b84a6b8a5e1e26d3ed3d";
+          };
         };
       };
 
@@ -82,6 +86,7 @@
           version = "1.2.3";
         });
         expected = {
+          format = "pyproject";
           meta = {
             broken = false;
             description = "Better dates & times for Python";
@@ -89,7 +94,10 @@
           pname = "arrow";
           propagatedBuildInputs = [ "python-dateutil" ];
           version = "1.2.3";
-          src = null;
+          src = {
+            file = "arrow-1.2.3.tar.gz";
+            hash = "sha256:3934b30ca1b9f292376d9db15b19446088d12ec58629bc3f0da28fd55fb633a1";
+          };
         };
       };
 
@@ -110,6 +118,7 @@
           version = "1.2.3";
         });
         expected = {
+          format = "pyproject";
           meta = {
             broken = false;
             description = "Dummy test package";
@@ -117,7 +126,10 @@
           pname = "dummy";
           propagatedBuildInputs = [ "cachecontrol" "filelock" ];
           version = "1.2.3";
-          src = null;
+          src = {
+            file = "arrow-1.2.3.tar.gz";
+            hash = "sha256:3934b30ca1b9f292376d9db15b19446088d12ec58629bc3f0da28fd55fb633a1";
+          };
         };
       };
     };
