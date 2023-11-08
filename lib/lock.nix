@@ -3,30 +3,37 @@
 , ...
 }:
 let
-  inherit (builtins) hasAttr splitVersion head filter toJSON length nixVersion baseNameOf;
+  inherit (builtins) hasAttr splitVersion head filter length nixVersion baseNameOf;
   inherit (pyproject-nix.lib) pep508 pypa;
   inherit (lib) flatten filterAttrs attrValues optionalAttrs listToAttrs nameValuePair versionAtLeast;
 
   # Select the best compatible wheel from a list of wheels
-  selectWheel = wheels: python:
+  selectWheels = wheels: python:
     let
-      compatibleWheels =
-        let
-          # Group wheel files by their file name
-          wheelFilesByFileName = lib.listToAttrs (map (fileEntry: lib.nameValuePair fileEntry.file fileEntry) wheels);
-          # Filter wheels based on interpreter
-          selectedWheels = pypa.selectWheels python.stdenv.targetPlatform python (map (fileEntry: pypa.parseWheelFileName fileEntry.file) wheels);
-        in
-        map (wheel: wheelFilesByFileName.${wheel.filename}) selectedWheels;
+      # Filter wheels based on interpreter
+      compatibleWheels = pypa.selectWheels python.stdenv.targetPlatform python (map (fileEntry: pypa.parseWheelFileName fileEntry.file) wheels);
     in
-    if length compatibleWheels >= 1
-    then (head compatibleWheels)
-    else throw "Could not find wheel for ${python.name}: ${toJSON wheels}";
+    map (wheel: wheel.filename) compatibleWheels;
 
-  # Select the first sdist from a list of sdists
-  selectSdist = head;
+  optionalHead = list: if length list > 0 then head list else null;
+
 in
-lib.fix (self: {
+lib.fix (self:
+let
+  # Make the internal __pdm2nix overlay attribute.
+  # This is used in the overlay to create PEP-508 environments & fetchers that don't need to be instantiated for every package.
+  mkPdm2Nix = python: {
+    environ = pep508.mkEnviron python;
+    fetchPDMPackage = python.pkgs.callPackage self.mkFetchPDMPackage {
+      # Get from Flake attribute first, falling back to regular attribute access
+      fetchFromPypi = pyproject-nix.fetchers.${python.system}.fetchFromPypi or pyproject-nix.fetchers.fetchFromPypi;
+      fetchFromLegacy = pyproject-nix.fetchers.${python.system}.fetchFromLegacy or pyproject-nix.fetchers.fetchFromLegacy;
+    };
+    pyVersion = pyproject-nix.lib.pep440.parseVersion python.version;
+  };
+
+in
+{
   /*
     Create package overlay from pdm.lock
     */
@@ -37,9 +44,13 @@ lib.fix (self: {
       inherit (pdmLock) metadata;
       lockMajor = head (splitVersion metadata.lock_version);
     in
-    assert lockMajor == "4"; {
+    assert lockMajor == "4";
+    (_final: prev: {
+      # Internal metadata/fetcher
+      __pdm2nix = mkPdm2Nix prev.python;
+
       # TODO: The rest of the fucking owl
-    };
+    });
 
   /*
     Partition list of attrset from `package.files` into groups of sdists, wheels, eggs, and others
@@ -59,63 +70,84 @@ lib.fix (self: {
       others = eggs.wrong;
     };
 
-  /*
-    Make source derivation from pdm.lock package section contents
-    */
-  mkSrc =
-    {
-      # The specific package segment from pdm.lock
-      package
-    , # Parsed pyproject.toml
-      pyproject
-    , # Parsed pyproject.toml # Project root path used for local file sources
-      projectRoot
-    , # Filename for which to invoke fetcher
-      filename ? throw "Missing argument filename"
-    ,
-    }:
+  mkFetchPDMPackage =
+    { fetchFromPypi
+    , fetchurl
+    , fetchFromLegacy
+    }: {
+         # The specific package segment from pdm.lock
+         package
+         # , # Parsed pyproject.toml
+         #   pyproject
+       , # Parsed pyproject.toml # Project root path used for local file sources
+         projectRoot
+       , # Filename for which to invoke fetcher
+         filename ? throw "Missing argument filename"
+       }:
     let
       # Group list of files by their filename into an attrset
       filesByFileName = listToAttrs (map (file: nameValuePair file.file file) package.files);
       file = filesByFileName.${filename} or (throw "Filename '${filename}' not present in package");
+
+      format =
+        if pypa.isSdistFileName filename then "pyproject"
+        else if pypa.isWheelFileName filename then "wheel"
+        else if pypa.isEggFileName filename then "egg"
+        else throw "Could not infer format from filename '${format}'";
+
     in
-    assert pyproject != { };
-    if hasAttr "git" package then {
-      fetcher = "fetchGit";
-      args =
-        {
-          url = package.git;
-          rev = package.revision;
-          inherit (package) ref;
+    if hasAttr "git" package then
+      ((
+        builtins.fetchGit
+          {
+            url = package.git;
+            rev = package.revision;
+          }
+        // optionalAttrs (hasAttr "ref" package) {
+          ref = "refs/tags/${package.ref}";
         }
         // optionalAttrs (versionAtLeast nixVersion "2.4") {
           allRefs = true;
           submodules = true;
-        };
-    }
-    else if hasAttr "url" package then {
-      fetcher = "fetchurl";
-      args = {
-        url = assert (baseNameOf package.url) == filename; package.url;
-        inherit (file) hash;
-      };
-    }
-    else if hasAttr "path" package then {
-      fetcher = "none";
-      args = projectRoot + "/${package.path}";
-    }
+        }
+      ) // {
+        passthru.format = "pyproject";
+      })
+    else if hasAttr "url" package then
+      ((
+        fetchurl {
+          url = assert (baseNameOf package.url) == filename; package.url;
+          inherit (file) hash;
+        }
+      ).overrideAttrs (
+        old: {
+          passthru = old.passthru // {
+            inherit format;
+          };
+        }
+      )
+      )
+    else if hasAttr "path" package then
+      {
+        format = "pyproject";
+        outPath = projectRoot + "/${package.path}";
+      }
     # TODO: Private PyPi repositories
     # else if (package in tool.pdm.source) (
     #   throw "Paths not implemented"
     # )
-    else {
-      fetcher = "fetchFromPypi";
-      args = {
-        pname = package.name;
-        inherit (package) version;
-        inherit (file) file hash;
-      };
-    };
+    else
+      (
+        fetchFromPypi {
+          pname = package.name;
+          inherit (package) version;
+          inherit (file) file hash;
+        }
+      ).overrideAttrs (old: {
+        passthru = old.passthru // {
+          inherit format;
+        };
+      });
 
   /*
     Make package from pdm.lock contents
@@ -134,73 +166,64 @@ lib.fix (self: {
       dependencies ? [ ]
     , # List of attrset with files
       files ? [ ]
-    ,
-    }: (
+    }@package: (
       let
         inherit (self.partitionFiles files) wheels sdists;
-
-        # Set default format
-        format' =
-          if length sdists > 0
-          then "pyproject"
-          else if length wheels > 0
-          then "wheel"
-          else throw "Could not compute default format for package '${name}' from files '${toJSON {inherit wheels sdists;}}'";
       in
       { python
       , pythonPackages
-      , format ? format'
-      ,
+      , buildPythonPackage
+      , __pdm2nix ? mkPdm2Nix python
       }:
       let
-        # Consider: How to avoid creating the PEP-508 environ for every package?
-        environ = pep508.mkEnviron python; # TODO: Fetcher factory for systems not exposed by pyproject-nix flake
-      in
-      {
-        pname = name;
-        inherit format version;
-
-        doCheck = false; # No development deps in pdm.lock
-
-        # TODO: Invoke fetcher
-        src =
-          if format == "pyproject" then selectSdist sdists
-          else if format == "wheel" then selectWheel python wheels
-          else throw "Unhandled format: ${format}";
-
-        propagatedBuildInputs =
-          let
-            parsed = map pep508.parseString dependencies;
-            # Filter only dependencies valid for this platform
-            filtered = filter (dep: dep.markers == null || pep508.evalMarkers environ dep.markers) parsed;
-          in
-          flatten (map
-            (dep:
-              let
-                # Optional dependencies filtered by enabled groups
-                optionals = attrValues (filterAttrs (group: _: lib.elem group dep.extras) (pythonPackages.${dep.name}.optional-dependencies or { }));
-              in
-              [ pythonPackages.${dep.name} ] ++ optionals)
-            filtered);
-
-        meta = {
-          description = summary;
-
-          # Mark as broken if Python version constraints don't match.
-          broken =
-            let
-              pyVersion = pyproject-nix.lib.pep440.parseVersion python.version;
-            in
-              ! (
-                lib.all
-                  (spec: pyproject-nix.lib.pep440.comparators.${spec.op} pyVersion spec.version)
-                  (pyproject-nix.lib.pep440.parseVersionConds requires_python)
-              );
+        src = __pdm2nix.fetchPDMPackage {
+          inherit package;
+          projectRoot = null;
+          filename = optionalHead (
+            # TODO: Wheel preference and/or require wheel
+            (map (file: file.file) sdists) ++ (selectWheels wheels python)
+            # TODO: Eggs
+          );
         };
-      }
-      // optionalAttrs (format == "wheel") {
+
+      in
+      buildPythonPackage
+        {
+          pname = name;
+          inherit version src;
+          inherit (src) format;
+
+          doCheck = false; # No development deps in pdm.lock
+
+          propagatedBuildInputs =
+            let
+              parsed = map pep508.parseString dependencies;
+              # Filter only dependencies valid for this platform
+              filtered = filter (dep: dep.markers == null || pep508.evalMarkers __pdm2nix.environ dep.markers) parsed;
+            in
+            flatten (map
+              (dep:
+                let
+                  # Optional dependencies filtered by enabled groups
+                  optionals = attrValues (filterAttrs (group: _: lib.elem group dep.extras) (pythonPackages.${dep.name}.optional-dependencies or { }));
+                in
+                [ pythonPackages.${dep.name} ] ++ optionals)
+              filtered);
+
+          meta = {
+            description = summary;
+
+            # Mark as broken if Python version constraints don't match.
+            broken = ! (
+              lib.all
+                (spec: pyproject-nix.lib.pep440.comparators.${spec.op} __pdm2nix.pyVersion spec.version)
+                (pyproject-nix.lib.pep440.parseVersionConds requires_python)
+            );
+          };
+        }
+      // optionalAttrs (src.format == "wheel") {
         # Don't strip prebuilt wheels
-        dontStrip = format == "wheel";
+        dontStrip = true;
       }
     );
 })

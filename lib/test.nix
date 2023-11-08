@@ -1,7 +1,7 @@
 { lib
 , pdm2nix
 , pkgs
-,
+, pyproject-nix
 }:
 let
   inherit (builtins) mapAttrs substring stringLength length attrNames;
@@ -9,7 +9,7 @@ let
 
   capitalise = s: toUpper (substring 0 1 s) + (substring 1 (stringLength s) s);
 
-  callTest = path: import path (pdm2nix // { inherit pkgs lib; });
+  callTest = path: import path (pdm2nix // { inherit pkgs lib pyproject-nix; });
 in
 lib.fix (self: {
   overlays = callTest ./test_overlays.nix;

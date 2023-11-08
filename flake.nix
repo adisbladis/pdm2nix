@@ -88,7 +88,7 @@
 
         # Expose unit tests for external discovery
         flake.libTests = import ./lib/test.nix {
-          inherit lib;
+          inherit lib pyproject-nix;
           pdm2nix = self.lib;
           pkgs = nixpkgs.legacyPackages.x86_64-linux;
         };

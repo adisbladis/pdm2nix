@@ -1,6 +1,7 @@
 { lock
 , pkgs
 , lib
+, pyproject-nix
 , ...
 }: {
   inherit (builtins) removeAttrs;
@@ -20,7 +21,9 @@
     let
       callPackage = pkg:
         let
-          drv = pkgs.python311.pkgs.callPackage pkg { };
+          drv = pkgs.python311.pkgs.callPackage pkg {
+            buildPythonPackage = x: x; # No-op to return attrs
+          };
 
           # Remove stuff we can't assert equality for easily
           cleaned = removeAttrs drv [ "override" "overrideDerivation" ];
@@ -29,6 +32,9 @@
         // {
           # Just extract names of dependencies for equality checking
           propagatedBuildInputs = map (drv: drv.pname) cleaned.propagatedBuildInputs;
+
+          # Only get URLs from src
+          src = drv.src.passthru;
         };
     in
     {
@@ -59,8 +65,8 @@
           propagatedBuildInputs = [ ];
           version = "2.0.0";
           src = {
-            file = "Arpeggio-2.0.0.tar.gz";
-            hash = "sha256:d6b03839019bb8a68785f9292ee6a36b1954eb84b925b84a6b8a5e1e26d3ed3d";
+            format = "pyproject";
+            urls = [ "https://files.pythonhosted.org/packages/source/a/arpeggio/Arpeggio-2.0.0.tar.gz" ];
           };
         };
       };
@@ -97,8 +103,8 @@
           propagatedBuildInputs = [ "python-dateutil" ];
           version = "1.2.3";
           src = {
-            file = "arrow-1.2.3.tar.gz";
-            hash = "sha256:3934b30ca1b9f292376d9db15b19446088d12ec58629bc3f0da28fd55fb633a1";
+            format = "pyproject";
+            urls = [ "https://files.pythonhosted.org/packages/source/a/arrow/arrow-1.2.3.tar.gz" ];
           };
         };
       };
@@ -130,8 +136,8 @@
           propagatedBuildInputs = [ "cachecontrol" "filelock" ];
           version = "1.2.3";
           src = {
-            file = "arrow-1.2.3.tar.gz";
-            hash = "sha256:3934b30ca1b9f292376d9db15b19446088d12ec58629bc3f0da28fd55fb633a1";
+            format = "pyproject";
+            urls = [ "https://files.pythonhosted.org/packages/source/a/dummy/arrow-1.2.3.tar.gz" ];
           };
         };
       };
@@ -159,11 +165,23 @@
     };
   };
 
-  mkSrc =
+  mkFetchPDMPackage =
     let
-      pyproject = lib.importTOML ./fixtures/kitchen-sink/a/pyproject.toml;
       pdmLock = lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock;
       projectRoot = ./fixtures/kitchen-sink/a;
+
+      fetchPDMPackage =
+        let
+          system = "x86_64-linux";
+        in
+        pkgs.callPackage lock.mkFetchPDMPackage {
+          inherit (pyproject-nix.fetchers.${system}) fetchFromPypi;
+          inherit (pyproject-nix.fetchers.${system}) fetchFromLegacy;
+          # fetchFromPypi = x: null;
+          # fetchFromLegacy = x: null;
+        };
+
+      # fetchPDMPackage = x: x;
 
       findPackage = name: lib.findFirst (pkg: pkg.name == name) (throw "package '${name} not found") pdmLock.package;
     in
@@ -171,76 +189,66 @@
       testFetchFromPyPi = {
         expr =
           let
-            src = lock.mkSrc {
-              inherit pyproject projectRoot;
+            src = (fetchPDMPackage {
+              inherit projectRoot;
               package = findPackage "requests";
               filename = "requests-2.31.0.tar.gz";
-            };
+            }).passthru;
           in
           src;
         expected = {
-          args = {
-            file = "requests-2.31.0.tar.gz";
-            hash = "sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1";
-            pname = "requests";
-            version = "2.31.0";
-          };
-          fetcher = "fetchFromPypi";
+          format = "pyproject";
+          urls = [ "https://files.pythonhosted.org/packages/source/r/requests/requests-2.31.0.tar.gz" ];
         };
       };
 
       testURL = {
-        expr = lock.mkSrc {
-          inherit pyproject projectRoot;
+        expr = (fetchPDMPackage {
+          inherit projectRoot;
           package = findPackage "arpeggio";
           filename = "Arpeggio-2.0.2-py2.py3-none-any.whl";
-        };
+        }).passthru;
         expected = {
-          args = {
-            hash = "sha256:f7c8ae4f4056a89e020c24c7202ac8df3e2bc84e416746f20b0da35bb1de0250";
-            url = "https://files.pythonhosted.org/packages/f7/4f/d28bf30a19d4649b40b501d531b44e73afada99044df100380fd9567e92f/Arpeggio-2.0.2-py2.py3-none-any.whl";
-          };
-          fetcher = "fetchurl";
+          format = "wheel";
+          url = "https://files.pythonhosted.org/packages/f7/4f/d28bf30a19d4649b40b501d531b44e73afada99044df100380fd9567e92f/Arpeggio-2.0.2-py2.py3-none-any.whl";
         };
       };
 
       testGit = {
         expr =
           let
-            src = lock.mkSrc {
-              inherit pyproject projectRoot;
+            src = fetchPDMPackage {
+              inherit projectRoot;
               package = findPackage "pip";
             };
           in
-          src;
+          assert lib.hasAttr "outPath" src;
+          { inherit (src) ref allRefs submodules rev passthru; };
         expected = {
-          args = {
-            allRefs = true;
-            ref = "20.3.1";
-            rev = "f94a429e17b450ac2d3432f46492416ac2cf58ad";
-            submodules = true;
-            url = "https://github.com/pypa/pip.git";
-          };
-          fetcher = "fetchGit";
+          allRefs = true;
+          passthru.format = "pyproject";
+          ref = "refs/tags/20.3.1";
+          rev = "f94a429e17b450ac2d3432f46492416ac2cf58ad";
+          submodules = true;
         };
       };
 
       testPathSdist = {
         expr =
           let
-            src = lock.mkSrc {
-              inherit pyproject projectRoot;
+            src = fetchPDMPackage {
+              inherit projectRoot;
               package = findPackage "attrs";
               filename = "attrs-23.1.0.tar.gz";
             };
           in
           {
-            inherit (src) fetcher;
-            isStorePath = lib.isStorePath "${src.args}";
-            hasSuffix = lib.hasSuffix "attrs-23.1.0.tar.gz" "${src.args}";
+            isStorePath = lib.isStorePath "${src}";
+            hasSuffix = lib.hasSuffix "attrs-23.1.0.tar.gz" "${src}";
+            inherit (src) format;
           };
         expected = {
-          fetcher = "none";
+          format = "pyproject";
           isStorePath = true;
           hasSuffix = true;
         };
