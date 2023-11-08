@@ -234,10 +234,12 @@
             };
           in
           {
+            inherit (src) fetcher;
             isStorePath = lib.isStorePath "${src.args}";
             hasSuffix = lib.hasSuffix "attrs-23.1.0.tar.gz" "${src.args}";
           };
         expected = {
+          fetcher = "none";
           isStorePath = true;
           hasSuffix = true;
         };

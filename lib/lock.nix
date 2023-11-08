@@ -162,10 +162,8 @@ lib.fix (self: {
 
         # TODO: Invoke fetcher
         src =
-          if format == "pyproject"
-          then selectSdist sdists
-          else if format == "wheel"
-          then selectWheel python wheels
+          if format == "pyproject" then selectSdist sdists
+          else if format == "wheel" then selectWheel python wheels
           else throw "Unhandled format: ${format}";
 
         propagatedBuildInputs =
