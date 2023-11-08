@@ -5,7 +5,7 @@
 let
   inherit (builtins) splitVersion head filter toJSON length;
   inherit (pyproject-nix.lib) pep508 pypa;
-  inherit (lib) flatten filterAttrs attrValues;
+  inherit (lib) flatten filterAttrs attrValues optionalAttrs;
 
   # Select the best compatible wheel from a list of wheels
   selectWheel = wheels: python:
@@ -85,11 +85,14 @@ lib.fix (self: {
       let
         # Consider: How to avoid creating the PEP-508 environ for every package?
         environ = pep508.mkEnviron python;
+        fetchers = pyproject-nix.fetchers.${python.system};  # TODO: Fetcher factory for systems not exposed by pyproject-nix flake
 
       in
       {
         pname = name;
         inherit format version;
+
+        doCheck = false; # No development deps in pdm.lock
 
         # TODO: Invoke fetcher
         src =
@@ -126,6 +129,9 @@ lib.fix (self: {
                   (pyproject-nix.lib.pep440.parseVersionConds requires_python)
               );
         };
+      } // optionalAttrs (format == "wheel") {
+        # Don't strip prebuilt wheels
+        dontStrip = format == "wheel";
       }
     );
 })

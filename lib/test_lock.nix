@@ -49,6 +49,7 @@
           version = "2.0.0";
         });
         expected = {
+          doCheck = false;
           format = "pyproject";
           meta = {
             broken = false;
@@ -86,6 +87,7 @@
           version = "1.2.3";
         });
         expected = {
+          doCheck = false;
           format = "pyproject";
           meta = {
             broken = false;
@@ -118,6 +120,7 @@
           version = "1.2.3";
         });
         expected = {
+          doCheck = false;
           format = "pyproject";
           meta = {
             broken = false;
