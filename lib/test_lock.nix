@@ -157,4 +157,90 @@
       };
     };
   };
+
+  mkSrc =
+    let
+      pyproject = lib.importTOML ./fixtures/kitchen-sink/a/pyproject.toml;
+      pdmLock = lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock;
+      projectRoot = ./fixtures/kitchen-sink/a;
+
+      findPackage = name: lib.findFirst (pkg: pkg.name == name) (throw "package '${name} not found") pdmLock.package;
+    in
+    {
+      testFetchFromPyPi = {
+        expr =
+          let
+            src = lock.mkSrc {
+              inherit pyproject projectRoot;
+              package = findPackage "requests";
+              filename = "requests-2.31.0.tar.gz";
+            };
+          in
+          src;
+        expected = {
+          args = {
+            file = "requests-2.31.0.tar.gz";
+            hash = "sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1";
+            pname = "requests";
+            version = "2.31.0";
+          };
+          fetcher = "fetchFromPypi";
+        };
+      };
+
+      testURL = {
+        expr = lock.mkSrc {
+          inherit pyproject projectRoot;
+          package = findPackage "arpeggio";
+          filename = "Arpeggio-2.0.2-py2.py3-none-any.whl";
+        };
+        expected = {
+          args = {
+            hash = "sha256:f7c8ae4f4056a89e020c24c7202ac8df3e2bc84e416746f20b0da35bb1de0250";
+            url = "https://files.pythonhosted.org/packages/f7/4f/d28bf30a19d4649b40b501d531b44e73afada99044df100380fd9567e92f/Arpeggio-2.0.2-py2.py3-none-any.whl";
+          };
+          fetcher = "fetchurl";
+        };
+      };
+
+      testGit = {
+        expr =
+          let
+            src = lock.mkSrc {
+              inherit pyproject projectRoot;
+              package = findPackage "pip";
+            };
+          in
+          src;
+        expected = {
+          args = {
+            allRefs = true;
+            ref = "20.3.1";
+            rev = "f94a429e17b450ac2d3432f46492416ac2cf58ad";
+            submodules = true;
+            url = "https://github.com/pypa/pip.git";
+          };
+          fetcher = "fetchGit";
+        };
+      };
+
+      testPathSdist = {
+        expr =
+          let
+            src = lock.mkSrc {
+              inherit pyproject projectRoot;
+              package = findPackage "attrs";
+              filename = "attrs-23.1.0.tar.gz";
+            };
+          in
+          {
+            isStorePath = lib.isStorePath "${src.args}";
+            hasSuffix = lib.hasSuffix "attrs-23.1.0.tar.gz" "${src.args}";
+          };
+        expected = {
+          isStorePath = true;
+          hasSuffix = true;
+        };
+      };
+    };
 }

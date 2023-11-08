@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:60bb7d6ca807eaaa771246250ef3f967ffc539d03b9eeb168cc904d5cd698a1c"
+content_hash = "sha256:b5e8477c44c292d6c324d70a8c20c3897039f42a0f0b2a9433db199361be1b83"
 
 [[package]]
 name = "arpeggio"
@@ -14,6 +14,16 @@ url = "https://files.pythonhosted.org/packages/f7/4f/d28bf30a19d4649b40b501d531b
 summary = "Packrat parser interpreter"
 files = [
     {file = "Arpeggio-2.0.2-py2.py3-none-any.whl", hash = "sha256:f7c8ae4f4056a89e020c24c7202ac8df3e2bc84e416746f20b0da35bb1de0250"},
+]
+
+[[package]]
+name = "attrs"
+version = "23.1.0"
+requires_python = ">=3.7"
+path = "../attrs-23.1.0.tar.gz"
+summary = "Classes Without Boilerplate"
+files = [
+    {file = "attrs-23.1.0.tar.gz", hash = "sha256:6279836d581513a26f1bf235f9acd333bc9115683f14f7e8fae46c98fc50e015"},
 ]
 
 [[package]]
