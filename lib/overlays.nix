@@ -1,4 +1,9 @@
-{ lib, ... }: {
+{ lib, ... }:
+let
+  inherit (builtins) hasAttr;
+
+in
+lib.fix (self: {
 
   /* Return overlay `a` with `b` applied, but only with intersecting keys.
 
@@ -13,9 +18,8 @@
     (final: prev:
     let
       aApplied = a final prev;
-      bApplied = b final aApplied;
     in
-    lib.filterAttrs (name: _: lib.hasAttr name aApplied) bApplied);
+    (lib.composeExtensions a (self.filter (name: _: hasAttr name aApplied) b)) final prev);
 
   /* Return overlay filtered by predicate.
 
@@ -23,4 +27,4 @@
        filter (name: overriden: name == "requests") (self: super: { })
   */
   filter = pred: overlay: (self: super: lib.filterAttrs pred (overlay self super));
-}
+})
