@@ -141,6 +141,7 @@
     testSimple = {
       expr = lock.partitionFiles (builtins.head (lib.importTOML ./fixtures/trivial/pdm.lock).package).files;
       expected = {
+        eggs = [ ];
         others = [ ];
         sdists = [
           {

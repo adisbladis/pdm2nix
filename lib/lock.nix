@@ -42,7 +42,7 @@ lib.fix (self: {
     };
 
   /*
-    Partition list of attrset from `package.files` into groups of wheels, sdist, and others
+    Partition list of attrset from `package.files` into groups of sdists, wheels, eggs, and others
     */
   partitionFiles =
     # List of files from poetry.lock -> package segment
@@ -50,11 +50,13 @@ lib.fix (self: {
     let
       wheels = lib.lists.partition (f: pypa.isWheelFileName f.file) files;
       sdists = lib.lists.partition (f: pypa.isSdistFileName f.file) wheels.wrong;
+      eggs = lib.lists.partition (f: pypa.isEggFileName f.file) sdists.wrong;
     in
     {
-      wheels = wheels.right;
       sdists = sdists.right;
-      others = sdists.wrong;
+      wheels = wheels.right;
+      eggs = eggs.right;
+      others = eggs.wrong;
     };
 
   /*
