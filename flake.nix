@@ -119,6 +119,8 @@
                   config.proc.groups.run.package
                   nixUnit
                   inputs.mdbook-nixdoc.packages.${system}.default
+                  pkgs.pdm
+                  pkgs.mercurial
                 ]
                 ++ self.packages.${system}.doc.nativeBuildInputs;
             };

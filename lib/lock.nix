@@ -113,6 +113,16 @@ in
       ) // {
         passthru.format = "pyproject";
       })
+    else if hasAttr "hg" package then
+      ((
+        builtins.fetchMercurial
+          {
+            url = package.hg;
+            rev = package.revision;
+          }
+      ) // {
+        passthru.format = "pyproject";
+      })
     else if hasAttr "url" package then
       ((
         fetchurl {

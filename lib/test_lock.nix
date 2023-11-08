@@ -214,6 +214,15 @@
         };
       };
 
+      testMercurial = {
+        expr = (fetchPDMPackage {
+          inherit projectRoot;
+          package = findPackage "ruamel-yaml-clib";
+        }).passthru;
+        expectedError.type = "Error";
+        expectedError.msg = "requires a Mercurial revision";
+      };
+
       testGit = {
         expr =
           let
