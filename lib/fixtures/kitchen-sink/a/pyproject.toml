@@ -1,0 +1,40 @@
+# This pyproject.toml contains every valid way to specify a dependency
+
+[project]
+name = "a"
+version = "0.1.0"
+description = "Everything & the kitchen sink dependency specification wise"
+authors = [
+    {name = "adisbladis", email = "adisbladis@gmail.com"},
+]
+dependencies = [
+    # Named requirement
+    "requests",
+
+    # URL requirement (wheel)
+    "arpeggio @ https://files.pythonhosted.org/packages/f7/4f/d28bf30a19d4649b40b501d531b44e73afada99044df100380fd9567e92f/Arpeggio-2.0.2-py2.py3-none-any.whl",
+
+    # URL requirement (sdist)
+    "blinker @ https://files.pythonhosted.org/packages/e8/f9/a05287f3d5c54d20f51a235ace01f50620984bc7ca5ceee781dc645211c5/blinker-1.6.2.tar.gz",
+
+    # URL requirement (git)
+    "pip @ git+https://github.com/pypa/pip.git@20.3.1",
+
+    # Local dependency
+    "b @ file:///${PROJECT_ROOT}/../b",
+
+    # Egg
+    "pyasn1-modules @ https://files.pythonhosted.org/packages/0b/67/c53ba0c386e1eaa3a9aa7937356d845fa7b22df0b6f9e54122fca594f6cd/pyasn1_modules-0.2.8-py3.7.egg",
+
+    # Named requirement (using overriden repository)
+    "resolvelib"
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
+# Use the public PyPi legacy API as an overriden repo for resolvelib
+[[tool.pdm.source]]
+name = "private"
+url = "https://pypi.org/simple"  # Use PyPi legacy API as a "private" pypi
+include_packages = ["resolvelib"]
