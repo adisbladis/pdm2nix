@@ -45,12 +45,25 @@ in
       lockMajor = head (splitVersion metadata.lock_version);
     in
     assert lockMajor == "4";
-    (_final: prev: {
-      # Internal metadata/fetcher
+    (final: prev:
+    let
+      # Internal metadata/fetchers
       __pdm2nix = mkPdm2Nix prev.python;
 
-      # TODO: The rest of the fucking owl
-    });
+      # Filter pdm.lock based on requires_python
+      compatible = filter
+        (package: ! hasAttr "requires_python" package || (
+          lib.all
+            (spec: pyproject-nix.lib.pep440.comparators.${spec.op} __pdm2nix.pyVersion spec.version)
+            (pyproject-nix.lib.pep440.parseVersionConds package.requires_python)
+        ))
+        pdmLock.package;
+
+      # # Create package set
+      pkgs = lib.listToAttrs (map (package: lib.nameValuePair package.name (final.callPackage (self.mkPackage package) { })) compatible);
+
+    in
+    { inherit __pdm2nix; } // pkgs);
 
   /*
     Partition list of attrset from `package.files` into groups of sdists, wheels, eggs, and others
@@ -70,6 +83,9 @@ in
       others = eggs.wrong;
     };
 
+  /*
+    Fetch a package from pdm.lock
+    */
   mkFetchPDMPackage =
     { fetchFromPypi
     , fetchurl
@@ -112,6 +128,7 @@ in
         }
       ) // {
         passthru.format = "pyproject";
+        format = "pyproject";
       })
     else if hasAttr "hg" package then
       ((
@@ -176,6 +193,18 @@ in
       dependencies ? [ ]
     , # List of attrset with files
       files ? [ ]
+    , # URL string
+      url ? null # deadnix: skip
+    , # Path string
+      path ? null # deadnix: skip
+    , # Git ref
+      ref ? null # deadnix: skip
+    , # VCS revision
+      revision ? null # deadnix: skip
+    , # Git URL
+      git ? null # deadnix: skip
+    , # Mercurial URL
+      hg ? null # deadnix: skip
     }@package: (
       let
         inherit (self.partitionFiles files) wheels sdists;
@@ -201,6 +230,8 @@ in
         {
           pname = name;
           inherit version src;
+          # inherit (src) format;
+
           inherit (src) format;
 
           doCheck = false; # No development deps in pdm.lock

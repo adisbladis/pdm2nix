@@ -15,6 +15,85 @@
       };
       expectedError.type = "AssertionError";
     };
+
+    testTrivial = {
+      expr =
+        let
+          overlay = lock.mkOverlay (lib.importTOML ./fixtures/trivial/pdm.lock);
+
+          python = pkgs.python311.override {
+            self = python;
+            packageOverrides = overlay;
+          };
+
+        in
+        rec {
+          names = lib.attrNames (overlay python.pkgs python.pkgs);
+          pkgs = map
+            (attr:
+              let
+                drv = python.pkgs.${attr};
+              in
+              {
+                inherit (drv) pname version;
+              })
+            (lib.filter (name: name != "__pdm2nix") names);
+        };
+      expected = {
+        names = [ "__pdm2nix" "arpeggio" ];
+        pkgs = [
+          { pname = "arpeggio"; version = "2.0.2"; }
+        ];
+      };
+    };
+
+    testKitchenSink = {
+      expr =
+        let
+          overlay = lock.mkOverlay (lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock);
+
+          python = pkgs.python311.override {
+            self = python;
+            packageOverrides = lib.composeExtensions overlay (_final: _prev: {
+              # error: in pure evaluation mode, 'fetchMercurial' requires a Mercurial revision
+              ruamel-yaml-clib = {
+                pname = "ruamel-yaml-clib";
+                version = "0.1.0";
+              };
+            });
+          };
+
+        in
+        rec {
+          names = lib.attrNames (overlay python.pkgs python.pkgs);
+          pkgs = map
+            (attr:
+              let
+                drv = python.pkgs.${attr};
+              in
+              {
+                inherit (drv) pname version;
+              })
+            (lib.filter (name: name != "__pdm2nix") names);
+        };
+      expected = {
+        names = [ "__pdm2nix" "arpeggio" "attrs" "b" "blinker" "certifi" "charset-normalizer" "idna" "pip" "requests" "resolvelib" "ruamel-yaml-clib" "urllib3" ];
+        pkgs = [
+          { pname = "arpeggio"; version = "2.0.2"; }
+          { pname = "attrs"; version = "23.1.0"; }
+          { pname = "b"; version = "0.1.0"; }
+          { pname = "blinker"; version = "1.6.2"; }
+          { pname = "certifi"; version = "2023.7.22"; }
+          { pname = "charset-normalizer"; version = "3.3.2"; }
+          { pname = "idna"; version = "3.4"; }
+          { pname = "pip"; version = "20.3.1"; }
+          { pname = "requests"; version = "2.31.0"; }
+          { pname = "resolvelib"; version = "1.0.1"; }
+          { pname = "ruamel-yaml-clib"; version = "0.1.0"; }
+          { pname = "urllib3"; version = "2.0.7"; }
+        ];
+      };
+    };
   };
 
   mkPackage =
@@ -177,11 +256,7 @@
         pkgs.callPackage lock.mkFetchPDMPackage {
           inherit (pyproject-nix.fetchers.${system}) fetchFromPypi;
           inherit (pyproject-nix.fetchers.${system}) fetchFromLegacy;
-          # fetchFromPypi = x: null;
-          # fetchFromLegacy = x: null;
         };
-
-      # fetchPDMPackage = x: x;
 
       findPackage = name: lib.findFirst (pkg: pkg.name == name) (throw "package '${name} not found") pdmLock.package;
     in

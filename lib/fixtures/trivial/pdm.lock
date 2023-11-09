@@ -11,6 +11,7 @@ content_hash = "sha256:05425a198cd837275efb71f3a3f5045821589612b04b3c0cd527e64de
 name = "arpeggio"
 version = "2.0.2"
 summary = "Packrat parser interpreter"
+requires_python = ">=3.7"
 files = [
     {file = "Arpeggio-2.0.2-py2.py3-none-any.whl", hash = "sha256:f7c8ae4f4056a89e020c24c7202ac8df3e2bc84e416746f20b0da35bb1de0250"},
     {file = "Arpeggio-2.0.2.tar.gz", hash = "sha256:c790b2b06e226d2dd468e4fbfb5b7f506cec66416031fde1441cf1de2a0ba700"},

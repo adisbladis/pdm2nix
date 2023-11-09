@@ -26,8 +26,8 @@ dependencies = [
     # Local dependency (sdist)
     "attrs @ file:///${PROJECT_ROOT}/../attrs-23.1.0.tar.gz",
 
-    # Egg
-    "pyasn1-modules @ https://files.pythonhosted.org/packages/0b/67/c53ba0c386e1eaa3a9aa7937356d845fa7b22df0b6f9e54122fca594f6cd/pyasn1_modules-0.2.8-py3.7.egg",
+    # # Egg
+    # "pyasn1-modules @ https://files.pythonhosted.org/packages/0b/67/c53ba0c386e1eaa3a9aa7937356d845fa7b22df0b6f9e54122fca594f6cd/pyasn1_modules-0.2.8-py3.7.egg",
 
     # Named requirement (using overriden repository)
     "resolvelib",
