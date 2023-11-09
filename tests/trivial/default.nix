@@ -48,13 +48,16 @@ let
     # Note the self argument.
     # It's important so the interpreter/set is internally consistent.
     self = python;
+    # Pass composed Python overlay to the interpreter
     packageOverrides = overlay;
   };
 
-  # Render buildPythonPackage with our overriden interpreter
-  attrs = pyproject-nix.lib.renderers.buildPythonPackage { inherit python project; } // {
-    src = ./.;
-  };
-
 in
-python.pkgs.buildPythonPackage attrs
+# Call buildPythonPackage from the Python set
+python.pkgs.buildPythonPackage (
+  # Render a buildPythonPackage attrset with our overriden interpreter
+  project.renderers.buildPythonPackage { inherit python; } // {
+    # Set src to current directory.
+    src = ./.;
+  }
+)

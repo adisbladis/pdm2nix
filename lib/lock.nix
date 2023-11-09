@@ -278,6 +278,7 @@ in
         };
 
       in
+      # TODO: Path dependencies
       buildPythonPackage
         {
           pname = name;
