@@ -1,0 +1,17 @@
+[project]
+name = "trivial"
+version = "0.1.0"
+description = "Demo project"
+authors = [
+    {name = "adisbladis", email = "adisbladis@gmail.com"},
+]
+dependencies = [
+    "requests"
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"

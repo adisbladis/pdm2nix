@@ -105,7 +105,12 @@
           {
             treefmt.imports = [ ./dev/treefmt.nix ];
 
-            checks = builtins.removeAttrs self.packages.${system} [ "default" ];
+            checks = builtins.removeAttrs self.packages.${system} [ "default" ] // (
+              import ./tests {
+                inherit lib pyproject-nix pkgs;
+                pdm2nix = self;
+              }
+            );
 
             proc.groups.run.processes = {
               nix-unittest.command = "${lib.getExe' pkgs.reflex "reflex"} -r '\.(nix)$' -- ${lib.getExe' nixUnit "nix-unit"} --quiet --flake '.#libTests'";
