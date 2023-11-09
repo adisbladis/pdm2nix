@@ -671,11 +671,11 @@
         "treefmt-nix": "treefmt-nix_5"
       },
       "locked": {
-        "lastModified": 1699512368,
-        "narHash": "sha256-guIQuUfCow1bLaM3l3dt0ggE3rD44+YTeWipIk30I9M=",
+        "lastModified": 1699571586,
+        "narHash": "sha256-nc9OH99JSRR8muK9VD7rM3LRp5AK6aZm+EIhe341yR8=",
         "owner": "adisbladis",
         "repo": "pyproject.nix",
-        "rev": "4add76818598e104425ed00ddf661d83bd2f2930",
+        "rev": "e1fe3355a44cc3f95612f3e0d4b1102b2f648530",
         "type": "github"
       },
       "original": {

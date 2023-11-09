@@ -43,4 +43,4 @@ license = {text = "MIT"}
 [[tool.pdm.source]]
 name = "private"
 url = "https://pypi.org/simple"  # Use PyPi legacy API as a "private" pypi
-include_packages = ["resolvelib"]
+include_packages = ["resolvelib", "resolvelib-*"]

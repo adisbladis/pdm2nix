@@ -2,11 +2,10 @@
 , pyproject-nix
 , pdm2nix
 , python3
-,
 }:
 let
   # Use project abstraction from pyproject.nix
-  project = pyproject-nix.lib.project.loadPyproject {
+  project = pyproject-nix.lib.project.loadPDMPyproject {
     pyproject = lib.importTOML ./pyproject.toml;
   };
 
@@ -14,7 +13,10 @@ let
   overlay =
     let
       # Create overlay using pdm2nix
-      overlay' = pdm2nix.lib.lock.mkOverlay (lib.importTOML ./pdm.lock);
+      overlay' = pdm2nix.lib.lock.mkOverlay {
+        inherit (project) pyproject;
+        pdmLock = lib.importTOML ./pdm.lock;
+      };
       # Apply some build system fixes.
       # You should use overrides from poetry2nix, but to keep the test small
       # We opt to manually add them here.

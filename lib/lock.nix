@@ -3,7 +3,7 @@
 , ...
 }:
 let
-  inherit (builtins) hasAttr splitVersion head filter length nixVersion baseNameOf;
+  inherit (builtins) hasAttr splitVersion head filter length nixVersion baseNameOf match;
   inherit (pyproject-nix.lib) pep508 pypa;
   inherit (lib) flatten filterAttrs attrValues optionalAttrs listToAttrs nameValuePair versionAtLeast;
 
@@ -20,6 +20,14 @@ let
 
   # Take the first element of a list, return null for empty
   optionalHead = list: if length list > 0 then head list else null;
+
+  # Match str against a glob pattern
+  matchGlob =
+    let
+      # Make regex from glob pattern
+      mkRe = builtins.replaceStrings [ "*" ] [ ".*" ];
+    in
+    str: glob: match (mkRe glob) str != null;
 
 in
 lib.fix (self:
@@ -42,8 +50,13 @@ in
     Create package overlay from pdm.lock
     */
   mkOverlay =
-    # Parsed pdm.lock
-    pdmLock:
+    {
+      # Parsed pyproject.toml
+      pyproject
+    , # Parsed pdm.lock
+      pdmLock
+    ,
+    }:
     let
       inherit (pdmLock) metadata;
       lockMajor = head (splitVersion metadata.lock_version);
@@ -64,7 +77,7 @@ in
         pdmLock.package;
 
       # Create package set
-      pkgs = lib.listToAttrs (map (package: lib.nameValuePair package.name (final.callPackage (self.mkPackage package) { })) compatible);
+      pkgs = lib.listToAttrs (map (package: lib.nameValuePair package.name (final.callPackage (self.mkPackage pyproject package) { })) compatible);
 
     in
     { inherit __pdm2nix; } // pkgs);
@@ -101,7 +114,8 @@ in
          projectRoot
        , # Filename for which to invoke fetcher
          filename ? throw "Missing argument filename"
-       ,
+       , # Parsed pyproject.toml contents
+         pyproject
        }:
     let
       # Group list of files by their filename into an attrset
@@ -159,30 +173,65 @@ in
       )
     else if hasAttr "path" package then
       {
+        passthru.format = "pyproject";
         format = "pyproject";
         outPath = projectRoot + "/${package.path}";
       }
-    # TODO: Private PyPi repositories
-    # else if (package in tool.pdm.source) (
-    #   throw "Paths not implemented"
-    # )
     else
       (
-        fetchFromPypi {
-          pname = package.name;
-          inherit (package) version;
-          inherit (file) file hash;
-        }
-      ).overrideAttrs (old: {
-        passthru = old.passthru // {
-          inherit format;
-        };
-      });
+        # Fetch from Pypi, either the public instance or a private one.
+        let
+          sources' = pyproject.tool.pdm.source or [ ];
+
+          # Source from pyproject.toml keyed by their name
+          sources = {
+            # Default Pypi mirror as per https://pdm-project.org/latest/usage/config/.
+            # If you want to omit the default PyPI index, just set the source name to pypi and that source will replace it.
+            pypi = {
+              url = "https://pypi.org/simple";
+            };
+          } // listToAttrs (map (source: nameValuePair source.name source) sources');
+
+          # Filter only PyPi mirrors matching this package
+          activeSources = filter
+            (
+              source: (
+                (! hasAttr "include_packages" source || lib.any (matchGlob package.name) source.include_packages)
+                &&
+                (! hasAttr "exclude_packages" source || lib.all (glob: ! (matchGlob package.name) glob) source.exclude_packages)
+              )
+            )
+            (attrValues sources);
+
+        in
+        (
+          # If we don't have any custom package sources to consider, use the faster fetchFromPyPi fetcher
+          # Otherwise fall back to the legacy API.
+          if sources' == [ ] then
+            (fetchFromPypi {
+              pname = package.name;
+              inherit (package) version;
+              inherit (file) file hash;
+            }) else
+            (fetchFromLegacy {
+              urls = map (source: source.url) activeSources;
+              pname = package.name;
+              inherit (file) file hash;
+            })
+        ).overrideAttrs (old: {
+          passthru = old.passthru // {
+            inherit format;
+          };
+        })
+      );
 
   /*
     Make package from pdm.lock contents
     */
   mkPackage =
+    # Parsed pyproject.toml
+    pyproject:
+    # Package segment
     {
       # Package name string
       name
@@ -219,7 +268,7 @@ in
       }:
       let
         src = __pdm2nix.fetchPDMPackage {
-          inherit package;
+          inherit pyproject package;
           projectRoot = null;
           filename = optionalHead (
             # TODO: Wheel preference and/or require wheel
@@ -233,8 +282,6 @@ in
         {
           pname = name;
           inherit version src;
-          # inherit (src) format;
-
           inherit (src) format;
 
           doCheck = false; # No development deps in pdm.lock

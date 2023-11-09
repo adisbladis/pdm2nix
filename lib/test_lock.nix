@@ -9,9 +9,12 @@
   mkOverlay = {
     testWrongMetadataVersion = {
       expr = lock.mkOverlay {
-        metadata = {
-          lock_version = "3.0";
+        pdmLock = {
+          metadata = {
+            lock_version = "3.0";
+          };
         };
+        pyproject = { };
       };
       expectedError.type = "AssertionError";
     };
@@ -19,7 +22,10 @@
     testTrivial = {
       expr =
         let
-          overlay = lock.mkOverlay (lib.importTOML ./fixtures/trivial/pdm.lock);
+          overlay = lock.mkOverlay {
+            pyproject = lib.importTOML ./fixtures/trivial/pyproject.toml;
+            pdmLock = lib.importTOML ./fixtures/trivial/pdm.lock;
+          };
 
           python = pkgs.python311.override {
             self = python;
@@ -50,7 +56,10 @@
     testKitchenSink = {
       expr =
         let
-          overlay = lock.mkOverlay (lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock);
+          overlay = lock.mkOverlay {
+            pyproject = lib.importTOML ./fixtures/kitchen-sink/a/pyproject.toml;
+            pdmLock = lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock;
+          };
 
           python = pkgs.python311.override {
             self = python;
@@ -99,6 +108,8 @@
 
   mkPackage =
     let
+      pyproject = { }; # Dummy empty pyproject for tests
+
       callPackage = pkg:
         let
           drv = pkgs.python311.pkgs.callPackage pkg {
@@ -119,7 +130,7 @@
     in
     {
       testSimple = {
-        expr = callPackage (lock.mkPackage {
+        expr = callPackage (lock.mkPackage pyproject {
           files = [
             {
               file = "Arpeggio-2.0.0-py2.py3-none-any.whl";
@@ -152,7 +163,7 @@
       };
 
       testWithDependencies = {
-        expr = callPackage (lock.mkPackage {
+        expr = callPackage (lock.mkPackage pyproject {
           dependencies = [
             "python-dateutil>=2.7.0"
             "typing-extensions; python_version < \"3.8\""
@@ -190,7 +201,7 @@
       };
 
       testWithDependenciesOptionals = {
-        expr = callPackage (lock.mkPackage {
+        expr = callPackage (lock.mkPackage pyproject {
           dependencies = [
             "cachecontrol[filecache]"
           ];
@@ -247,6 +258,7 @@
 
   mkFetchPDMPackage =
     let
+      pyproject = lib.importTOML ./fixtures/kitchen-sink/a/pyproject.toml;
       pdmLock = lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock;
       projectRoot = ./fixtures/kitchen-sink/a;
 
@@ -262,11 +274,11 @@
       findPackage = name: lib.findFirst (pkg: pkg.name == name) (throw "package '${name} not found") pdmLock.package;
     in
     {
-      testFetchFromPyPi = {
+      testFetchFromLegacy = {
         expr =
           let
             src = (fetchPDMPackage {
-              inherit projectRoot;
+              inherit pyproject projectRoot;
               package = findPackage "requests";
               filename = "requests-2.31.0.tar.gz";
             }).passthru;
@@ -274,13 +286,14 @@
           src;
         expected = {
           format = "pyproject";
-          urls = [ "https://files.pythonhosted.org/packages/source/r/requests/requests-2.31.0.tar.gz" ];
+          isWheel = false;
+          urls = [ "https://pypi.org/simple" ];
         };
       };
 
       testURL = {
         expr = (fetchPDMPackage {
-          inherit projectRoot;
+          inherit pyproject projectRoot;
           package = findPackage "arpeggio";
           filename = "Arpeggio-2.0.2-py2.py3-none-any.whl";
         }).passthru;
@@ -292,7 +305,7 @@
 
       testMercurial = {
         expr = (fetchPDMPackage {
-          inherit projectRoot;
+          inherit pyproject projectRoot;
           package = findPackage "ruamel-yaml-clib";
         }).passthru;
         expectedError.type = "Error";
@@ -303,7 +316,7 @@
         expr =
           let
             src = fetchPDMPackage {
-              inherit projectRoot;
+              inherit pyproject projectRoot;
               package = findPackage "pip";
             };
           in
@@ -322,7 +335,7 @@
         expr =
           let
             src = fetchPDMPackage {
-              inherit projectRoot;
+              inherit pyproject projectRoot;
               package = findPackage "attrs";
               filename = "attrs-23.1.0.tar.gz";
             };
