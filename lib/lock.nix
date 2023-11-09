@@ -63,7 +63,7 @@ in
         ))
         pdmLock.package;
 
-      # # Create package set
+      # Create package set
       pkgs = lib.listToAttrs (map (package: lib.nameValuePair package.name (final.callPackage (self.mkPackage package) { })) compatible);
 
     in
@@ -97,12 +97,11 @@ in
     }: {
          # The specific package segment from pdm.lock
          package
-         # , # Parsed pyproject.toml
-         #   pyproject
-       , # Parsed pyproject.toml # Project root path used for local file sources
+       , # Project root path used for local file sources
          projectRoot
        , # Filename for which to invoke fetcher
          filename ? throw "Missing argument filename"
+       ,
        }:
     let
       # Group list of files by their filename into an attrset
@@ -113,7 +112,7 @@ in
         if pypa.isSdistFileName filename then "pyproject"
         else if pypa.isWheelFileName filename then "wheel"
         else if pypa.isEggFileName filename then "egg"
-        else throw "Could not infer format from filename '${format}'";
+        else throw "Could not infer format from filename '${filename}'";
 
     in
     if hasAttr "git" package then
