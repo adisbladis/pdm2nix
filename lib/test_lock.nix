@@ -77,7 +77,7 @@
             (lib.filter (name: name != "__pdm2nix") names);
         };
       expected = {
-        names = [ "__pdm2nix" "arpeggio" "attrs" "b" "blinker" "certifi" "charset-normalizer" "idna" "pip" "requests" "resolvelib" "ruamel-yaml-clib" "urllib3" ];
+        names = [ "__pdm2nix" "arpeggio" "attrs" "b" "blinker" "certifi" "charset-normalizer" "idna" "pip" "pyasn1-modules" "requests" "resolvelib" "ruamel-yaml-clib" "urllib3" ];
         pkgs = [
           { pname = "arpeggio"; version = "2.0.2"; }
           { pname = "attrs"; version = "23.1.0"; }
@@ -87,6 +87,7 @@
           { pname = "charset-normalizer"; version = "3.3.2"; }
           { pname = "idna"; version = "3.4"; }
           { pname = "pip"; version = "20.3.1"; }
+          { pname = "pyasn1-modules"; version = "0.0.0"; }
           { pname = "requests"; version = "2.31.0"; }
           { pname = "resolvelib"; version = "1.0.1"; }
           { pname = "ruamel-yaml-clib"; version = "0.1.0"; }

@@ -15,6 +15,10 @@ let
     in
     map (wheel: wheel.filename) compatibleWheels;
 
+  # Select the best compatible egg from a list of eggs
+  selectEggs = eggs: python: map (egg: egg.filename) (pypa.selectEggs python (map (egg: pypa.parseEggFileName egg.file) eggs));
+
+  # Take the first element of a list, return null for empty
   optionalHead = list: if length list > 0 then head list else null;
 
 in
@@ -207,7 +211,7 @@ in
       hg ? null # deadnix: skip
     }@package: (
       let
-        inherit (self.partitionFiles files) wheels sdists;
+        inherit (self.partitionFiles files) wheels sdists eggs;
       in
       { python
       , pythonPackages
@@ -221,7 +225,7 @@ in
           filename = optionalHead (
             # TODO: Wheel preference and/or require wheel
             (map (file: file.file) sdists) ++ (selectWheels wheels python)
-            # TODO: Eggs
+            ++ selectEggs eggs python
           );
         };
 

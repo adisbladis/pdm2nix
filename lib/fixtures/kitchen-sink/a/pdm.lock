@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:4e7d983c9875011f71e25628dcd926b16d21844e253b49ad8fff005ee4b53b17"
+content_hash = "sha256:1522cbc768ee87316718d7b332431103f6cd6395db22689dbbc5053606f2906a"
 
 [[package]]
 name = "arpeggio"
@@ -114,6 +114,15 @@ git = "https://github.com/pypa/pip.git"
 ref = "20.3.1"
 revision = "f94a429e17b450ac2d3432f46492416ac2cf58ad"
 summary = "The PyPA recommended tool for installing Python packages."
+
+[[package]]
+name = "pyasn1-modules"
+version = "0.0.0"
+url = "https://files.pythonhosted.org/packages/0b/67/c53ba0c386e1eaa3a9aa7937356d845fa7b22df0b6f9e54122fca594f6cd/pyasn1_modules-0.2.8-py3.7.egg"
+summary = ""
+files = [
+    {file = "pyasn1_modules-0.2.8-py3.7.egg", hash = "sha256:c29a5e5cc7a3f05926aff34e097e84f8589cd790ce0ed41b67aed6857b26aafd"},
+]
 
 [[package]]
 name = "requests"
