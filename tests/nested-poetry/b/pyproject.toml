@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "b"
+version = "0.1.0"
+description = "Dummy project depended on by a"
+authors = ["adisbladis <adisbladis@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+certifi = "^2023.7.22"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

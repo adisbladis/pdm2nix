@@ -36,4 +36,5 @@ in
 {
   trivial = callTest ./trivial { };
   nested = callTest ./nested { };
+  nested-poetry = callTest ./nested-poetry { };
 }
