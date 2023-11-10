@@ -2,6 +2,8 @@
 , pyproject-nix
 , ...
 }:
+
+lib.fix (self:
 let
   inherit (builtins) hasAttr splitVersion head filter length nixVersion baseNameOf match;
   inherit (pyproject-nix.lib) pep508 pypa;
@@ -29,9 +31,6 @@ let
     in
     str: glob: match (mkRe glob) str != null;
 
-in
-lib.fix (self:
-let
   # Make the internal __pdm2nix overlay attribute.
   # This is used in the overlay to create PEP-508 environments & fetchers that don't need to be instantiated for every package.
   mkPdm2Nix = python: {
