@@ -50,19 +50,17 @@ in
     */
   mkOverlay =
     {
-      # Parsed pyproject.toml
-      pyproject
-    , # Parsed pdm.lock
-      pdmLock
-    , # Project root path used for local file/directory sources
-      projectRoot ? null
+      # PDM project from pyproject.lib.project loadPDMPyproject
+      project
     , # Whether to prefer prebuilt binary wheels over sdists
       preferWheels ? false
+    ,
     }:
     let
-      inherit (pdmLock) metadata;
+      inherit (project.pdmLock) metadata;
       lockMajor = head (splitVersion metadata.lock_version);
     in
+    assert project.pdmLock != null;
     assert lockMajor == "4";
     (final: prev:
     let
@@ -76,7 +74,7 @@ in
             (spec: pyproject-nix.lib.pep440.comparators.${spec.op} __pdm2nix.pyVersion spec.version)
             (pyproject-nix.lib.pep440.parseVersionConds package.requires_python)
         ))
-        pdmLock.package;
+        project.pdmLock.package;
 
       # Create package set
       pkgs = lib.listToAttrs (map
@@ -84,7 +82,7 @@ in
           final.callPackage
             (self.mkPackage
               {
-                inherit pyproject projectRoot preferWheels;
+                inherit project preferWheels;
               }
               package)
             { }))
@@ -252,12 +250,11 @@ in
     */
   mkPackage =
     {
-      # Parsed pyproject.toml
-      pyproject
-    , # Project root path used for local file/directory sources
-      projectRoot ? null
+      # Project as returned by pyproject.lib.project.loadPDMPyProject
+      project
     , # Whether to prefer prebuilt binary wheels over sdists
       preferWheels ? false
+    ,
     }:
     # Package segment
     {
@@ -298,7 +295,8 @@ in
       }:
       let
         src = __pdm2nix.fetchPDMPackage {
-          inherit pyproject projectRoot package;
+          inherit (project) pyproject projectRoot;
+          inherit package;
           filename =
             let
               selectedWheels = selectWheels wheels python;

@@ -9,17 +9,16 @@
 let
   # Use project abstraction from pyproject.nix
   project = pyproject-nix.lib.project.loadPDMPyproject {
-    pyproject = lib.importTOML ./pyproject.toml;
+    # Load pyproject.toml/pdm.lock relative to project root.
+    # This will also be used to set `src` for the renderer.
+    projectRoot = ./.;
   };
 
   # Manage overlays
   overlay =
     let
       # Create overlay using pdm2nix
-      overlay' = pdm2nix.lib.lock.mkOverlay {
-        inherit (project) pyproject;
-        pdmLock = lib.importTOML ./pdm.lock;
-      };
+      overlay' = pdm2nix.lib.lock.mkOverlay { inherit project; };
     in
     # Apply some build system fixes.
     lib.composeExtensions overlay' overrides;
@@ -37,8 +36,5 @@ in
 # Call buildPythonPackage from the Python set
 python.pkgs.buildPythonPackage (
   # Render a buildPythonPackage attrset with our overriden interpreter
-  project.renderers.buildPythonPackage { inherit python; } // {
-    # Set src to current directory.
-    src = ./.;
-  }
+  project.renderers.buildPythonPackage { inherit python; }
 )

@@ -6,17 +6,13 @@
 }:
 let
   project = pyproject-nix.lib.project.loadPDMPyproject {
-    pyproject = lib.importTOML ./a/pyproject.toml;
+    projectRoot = ./a;
   };
 
   python = python3.override {
     self = python;
     packageOverrides = lib.composeManyExtensions [
-      (pdm2nix.lib.lock.mkOverlay {
-        inherit (project) pyproject;
-        pdmLock = lib.importTOML ./a/pdm.lock;
-        projectRoot = ./a;
-      })
+      (pdm2nix.lib.lock.mkOverlay { inherit project; })
       overrides
     ];
   };

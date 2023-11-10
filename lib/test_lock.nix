@@ -9,12 +9,14 @@
   mkOverlay = {
     testWrongMetadataVersion = {
       expr = lock.mkOverlay {
-        pdmLock = {
-          metadata = {
-            lock_version = "3.0";
+        project = {
+          pdmLock = {
+            metadata = {
+              lock_version = "3.0";
+            };
           };
+          pyproject = { };
         };
-        pyproject = { };
       };
       expectedError.type = "AssertionError";
     };
@@ -23,8 +25,7 @@
       expr =
         let
           overlay = lock.mkOverlay {
-            pyproject = lib.importTOML ./fixtures/trivial/pyproject.toml;
-            pdmLock = lib.importTOML ./fixtures/trivial/pdm.lock;
+            project = pyproject-nix.lib.project.loadPDMPyproject { projectRoot = ./fixtures/trivial; };
           };
 
           python = pkgs.python311.override {
@@ -57,9 +58,7 @@
       expr =
         let
           overlay = lock.mkOverlay {
-            pyproject = lib.importTOML ./fixtures/kitchen-sink/a/pyproject.toml;
-            pdmLock = lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock;
-            projectRoot = ./fixtures/kitchen-sink/a;
+            project = pyproject-nix.lib.project.loadPDMPyproject { projectRoot = ./fixtures/kitchen-sink/a; };
           };
 
           python = pkgs.python311.override {
@@ -109,7 +108,9 @@
 
   mkPackage =
     let
-      pyproject = { }; # Dummy empty pyproject for tests
+      project = {
+        pyproject = { };
+      }; # Dummy empty project for tests
 
       callPackage = pkg:
         let
@@ -131,7 +132,7 @@
     in
     {
       testSimple = {
-        expr = callPackage (lock.mkPackage { inherit pyproject; } {
+        expr = callPackage (lock.mkPackage { inherit project; } {
           files = [
             {
               file = "Arpeggio-2.0.0-py2.py3-none-any.whl";
@@ -165,7 +166,7 @@
       };
 
       testWithDependencies = {
-        expr = callPackage (lock.mkPackage { inherit pyproject; } {
+        expr = callPackage (lock.mkPackage { inherit project; } {
           dependencies = [
             "python-dateutil>=2.7.0"
             "typing-extensions; python_version < \"3.8\""
@@ -204,7 +205,7 @@
       };
 
       testWithDependenciesOptionals = {
-        expr = callPackage (lock.mkPackage { inherit pyproject; } {
+        expr = callPackage (lock.mkPackage { inherit project; } {
           dependencies = [
             "cachecontrol[filecache]"
           ];
