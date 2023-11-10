@@ -59,6 +59,7 @@
           overlay = lock.mkOverlay {
             pyproject = lib.importTOML ./fixtures/kitchen-sink/a/pyproject.toml;
             pdmLock = lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock;
+            projectRoot = ./fixtures/kitchen-sink/a;
           };
 
           python = pkgs.python311.override {
@@ -130,7 +131,7 @@
     in
     {
       testSimple = {
-        expr = callPackage (lock.mkPackage pyproject {
+        expr = callPackage (lock.mkPackage { inherit pyproject; } {
           files = [
             {
               file = "Arpeggio-2.0.0-py2.py3-none-any.whl";
@@ -158,12 +159,13 @@
           src = {
             format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/arpeggio/Arpeggio-2.0.0.tar.gz" ];
+            fetcher = "fetchFromPypi";
           };
         };
       };
 
       testWithDependencies = {
-        expr = callPackage (lock.mkPackage pyproject {
+        expr = callPackage (lock.mkPackage { inherit pyproject; } {
           dependencies = [
             "python-dateutil>=2.7.0"
             "typing-extensions; python_version < \"3.8\""
@@ -196,12 +198,13 @@
           src = {
             format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/arrow/arrow-1.2.3.tar.gz" ];
+            fetcher = "fetchFromPypi";
           };
         };
       };
 
       testWithDependenciesOptionals = {
-        expr = callPackage (lock.mkPackage pyproject {
+        expr = callPackage (lock.mkPackage { inherit pyproject; } {
           dependencies = [
             "cachecontrol[filecache]"
           ];
@@ -229,6 +232,7 @@
           src = {
             format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/dummy/arrow-1.2.3.tar.gz" ];
+            fetcher = "fetchFromPypi";
           };
         };
       };
@@ -288,6 +292,7 @@
           format = "pyproject";
           isWheel = false;
           urls = [ "https://pypi.org/simple" ];
+          fetcher = "fetchFromLegacy";
         };
       };
 
@@ -300,6 +305,7 @@
         expected = {
           format = "wheel";
           url = "https://files.pythonhosted.org/packages/f7/4f/d28bf30a19d4649b40b501d531b44e73afada99044df100380fd9567e92f/Arpeggio-2.0.2-py2.py3-none-any.whl";
+          fetcher = "fetchurl";
         };
       };
 
@@ -325,6 +331,7 @@
         expected = {
           allRefs = true;
           passthru.format = "pyproject";
+          passthru.fetcher = "fetchGit";
           ref = "refs/tags/20.3.1";
           rev = "f94a429e17b450ac2d3432f46492416ac2cf58ad";
           submodules = true;

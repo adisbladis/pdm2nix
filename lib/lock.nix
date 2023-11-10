@@ -5,7 +5,7 @@
 
 lib.fix (self:
 let
-  inherit (builtins) hasAttr splitVersion head filter length nixVersion baseNameOf match;
+  inherit (builtins) hasAttr splitVersion head filter length nixVersion baseNameOf match readDir pathExists;
   inherit (pyproject-nix.lib) pep508 pypa;
   inherit (lib) flatten filterAttrs attrValues optionalAttrs listToAttrs nameValuePair versionAtLeast;
 
@@ -54,7 +54,8 @@ in
       pyproject
     , # Parsed pdm.lock
       pdmLock
-    ,
+    , # Project root path used for local file/directory sources
+      projectRoot ? null
     }:
     let
       inherit (pdmLock) metadata;
@@ -76,7 +77,7 @@ in
         pdmLock.package;
 
       # Create package set
-      pkgs = lib.listToAttrs (map (package: lib.nameValuePair package.name (final.callPackage (self.mkPackage pyproject package) { })) compatible);
+      pkgs = lib.listToAttrs (map (package: lib.nameValuePair package.name (final.callPackage (self.mkPackage { inherit pyproject projectRoot; } package) { })) compatible);
 
     in
     { inherit __pdm2nix; } // pkgs);
@@ -109,7 +110,7 @@ in
     }: {
          # The specific package segment from pdm.lock
          package
-       , # Project root path used for local file sources
+       , # Project root path used for local file/directory sources
          projectRoot
        , # Filename for which to invoke fetcher
          filename ? throw "Missing argument filename"
@@ -145,6 +146,8 @@ in
       ) // {
         passthru.format = "pyproject";
         format = "pyproject";
+        passthru.fetcher = "fetchGit";
+        fetcher = "fetchGit";
       })
     else if hasAttr "hg" package then
       ((
@@ -155,6 +158,9 @@ in
           }
       ) // {
         passthru.format = "pyproject";
+        format = "pyproject";
+        passthru.fetcher = "hg";
+        fetcher = "hg";
       })
     else if hasAttr "url" package then
       ((
@@ -166,6 +172,7 @@ in
         old: {
           passthru = old.passthru // {
             inherit format;
+            fetcher = "fetchurl";
           };
         }
       )
@@ -174,6 +181,8 @@ in
       {
         passthru.format = "pyproject";
         format = "pyproject";
+        passthru.fetcher = "path";
+        fetcher = "path";
         outPath = projectRoot + "/${package.path}";
       }
     else
@@ -203,33 +212,41 @@ in
             (attrValues sources);
 
         in
-        (
-          # If we don't have any custom package sources to consider, use the faster fetchFromPyPi fetcher
-          # Otherwise fall back to the legacy API.
-          if sources' == [ ] then
-            (fetchFromPypi {
-              pname = package.name;
-              inherit (package) version;
-              inherit (file) file hash;
+        if sources' == [ ] then
+          (fetchFromPypi {
+            pname = package.name;
+            inherit (package) version;
+            inherit (file) file hash;
+          }).overrideAttrs
+            (old: {
+              passthru = old.passthru // {
+                fetcher = "fetchFromPypi";
+                inherit format;
+              };
             }) else
-            (fetchFromLegacy {
-              urls = map (source: source.url) activeSources;
-              pname = package.name;
-              inherit (file) file hash;
-            })
-        ).overrideAttrs (old: {
-          passthru = old.passthru // {
-            inherit format;
-          };
-        })
+          (fetchFromLegacy {
+            urls = map (source: source.url) activeSources;
+            pname = package.name;
+            inherit (file) file hash;
+          }).overrideAttrs (old: {
+            passthru = old.passthru // {
+              fetcher = "fetchFromLegacy";
+              inherit format;
+            };
+          })
       );
 
   /*
     Make package from pdm.lock contents
     */
   mkPackage =
-    # Parsed pyproject.toml
-    pyproject:
+    {
+      # Parsed pyproject.toml
+      pyproject
+    , # Project root path used for local file/directory sources
+      projectRoot ? null
+    ,
+    }:
     # Package segment
     {
       # Package name string
@@ -267,8 +284,7 @@ in
       }:
       let
         src = __pdm2nix.fetchPDMPackage {
-          inherit pyproject package;
-          projectRoot = null;
+          inherit pyproject projectRoot package;
           filename = optionalHead (
             # TODO: Wheel preference and/or require wheel
             (map (file: file.file) sdists) ++ (selectWheels wheels python)
@@ -276,45 +292,87 @@ in
           );
         };
 
-      in
-      # TODO: Path dependencies
-      buildPythonPackage
-        {
-          pname = name;
-          inherit version src;
-          inherit (src) format;
+        # Check if a path is an sdist or a nested project
+        isPathSdistFile = pypa.isSdistFileName (baseNameOf package.path);
 
-          doCheck = false; # No development deps in pdm.lock
+        attrs =
+          if src.passthru.fetcher == "path" && ! isPathSdistFile then
+            (
+              let
+                isNix = pathExists "${src}/default.nix";
+                hasPyproject = pathExists "${src}/pyproject.toml";
+                pyproject' = lib.importTOML "${src}/pyproject.toml";
+                isPoetry = hasPyproject && lib.hasAttrByPath [ "tool" "poetry" ] pyproject';
+                isPep621 = hasPyproject && lib.hasAttrByPath [ "project" ] pyproject';
+              in
+              (
+                # If a default.nix exists assume that we want to callPackage that one.
+                # This can be useful as an escape hatch if a project uses setuptools
+                # and you want to use it with Pdm2nix.
+                if isNix then import "${src}/default.nix"
 
-          propagatedBuildInputs =
-            let
-              parsed = map pep508.parseString dependencies;
-              # Filter only dependencies valid for this platform
-              filtered = filter (dep: dep.markers == null || pep508.evalMarkers __pdm2nix.environ dep.markers) parsed;
-            in
-            flatten (map
-              (dep:
-                let
-                  # Optional dependencies filtered by enabled groups
-                  optionals = attrValues (filterAttrs (group: _: lib.elem group dep.extras) (pythonPackages.${dep.name}.optional-dependencies or { }));
-                in
-                [ pythonPackages.${dep.name} ] ++ optionals)
-              filtered);
+                # Poetry project
+                else if isPoetry then
+                  (
+                    (pyproject-nix.lib.project.loadPoetryPyproject {
+                      pyproject = pyproject';
+                    }).renderers.buildPythonPackage { inherit python; }
+                  )
 
-          meta = {
-            description = summary;
+                # PEP-621
+                else if isPep621 then
+                  (
+                    (pyproject-nix.lib.project.loadPyproject {
+                      pyproject = pyproject';
+                    }).renderers.buildPythonPackage { inherit python; }
+                  )
 
-            # Mark as broken if Python version constraints don't match.
-            broken = ! (
-              lib.all
-                (spec: pyproject-nix.lib.pep440.comparators.${spec.op} __pdm2nix.pyVersion spec.version)
-                (pyproject-nix.lib.pep440.parseVersionConds requires_python)
-            );
+                # We don't know how to import other projects.
+                else throw "Path ${src} cannot be imported. Is neither a Nix, PEP-621 or Poetry project."
+              ) // {
+                # Override attributes from lock.
+                # Version might be dynamically computed otherwise.
+                inherit version src;
+              }
+            ) else {
+            pname = name;
+            inherit version src;
+            inherit (src) format;
+
+            doCheck = false; # No development deps in pdm.lock
+
+            propagatedBuildInputs =
+              let
+                parsed = map pep508.parseString dependencies;
+                # Filter only dependencies valid for this platform
+                filtered = filter (dep: dep.markers == null || pep508.evalMarkers __pdm2nix.environ dep.markers) parsed;
+              in
+              flatten (map
+                (dep:
+                  let
+                    # Optional dependencies filtered by enabled groups
+                    optionals = attrValues (filterAttrs (group: _: lib.elem group dep.extras) (pythonPackages.${dep.name}.optional-dependencies or { }));
+                  in
+                  [ pythonPackages.${dep.name} ] ++ optionals)
+                filtered);
+
+            meta = {
+              description = summary;
+
+              # Mark as broken if Python version constraints don't match.
+              broken = ! (
+                lib.all
+                  (spec: pyproject-nix.lib.pep440.comparators.${spec.op} __pdm2nix.pyVersion spec.version)
+                  (pyproject-nix.lib.pep440.parseVersionConds requires_python)
+              );
+            };
+          }
+          // optionalAttrs (src.format == "wheel") {
+            # Don't strip prebuilt wheels
+            dontStrip = true;
           };
-        }
-      // optionalAttrs (src.format == "wheel") {
-        # Don't strip prebuilt wheels
-        dontStrip = true;
-      }
+
+      in
+      buildPythonPackage attrs
     );
 })
