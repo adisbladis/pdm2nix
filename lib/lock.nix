@@ -56,6 +56,8 @@ in
       pdmLock
     , # Project root path used for local file/directory sources
       projectRoot ? null
+    , # Whether to prefer prebuilt binary wheels over sdists
+      preferWheels ? false
     }:
     let
       inherit (pdmLock) metadata;
@@ -77,7 +79,16 @@ in
         pdmLock.package;
 
       # Create package set
-      pkgs = lib.listToAttrs (map (package: lib.nameValuePair package.name (final.callPackage (self.mkPackage { inherit pyproject projectRoot; } package) { })) compatible);
+      pkgs = lib.listToAttrs (map
+        (package: lib.nameValuePair package.name (
+          final.callPackage
+            (self.mkPackage
+              {
+                inherit pyproject projectRoot preferWheels;
+              }
+              package)
+            { }))
+        compatible);
 
     in
     { inherit __pdm2nix; } // pkgs);
@@ -245,7 +256,8 @@ in
       pyproject
     , # Project root path used for local file/directory sources
       projectRoot ? null
-    ,
+    , # Whether to prefer prebuilt binary wheels over sdists
+      preferWheels ? false
     }:
     # Package segment
     {
@@ -275,21 +287,29 @@ in
       hg ? null # deadnix: skip
     }@package: (
       let
-        inherit (self.partitionFiles files) wheels sdists eggs;
+        inherit (self.partitionFiles files) wheels sdists eggs others;
       in
       { python
       , pythonPackages
       , buildPythonPackage
       , __pdm2nix ? mkPdm2Nix python
+      , # Whether to prefer prebuilt binary wheels over sdists
+        preferWheel ? preferWheels
       }:
       let
         src = __pdm2nix.fetchPDMPackage {
           inherit pyproject projectRoot package;
-          filename = optionalHead (
-            # TODO: Wheel preference and/or require wheel
-            (map (file: file.file) sdists) ++ (selectWheels wheels python)
-            ++ selectEggs eggs python
-          );
+          filename =
+            let
+              selectedWheels = selectWheels wheels python;
+              selectedSdists = map (file: file.file) sdists;
+            in
+            optionalHead (
+              (
+                if preferWheel then selectedWheels ++ selectedSdists
+                else selectedSdists ++ selectedWheels
+              ) ++ selectEggs eggs python ++ map (file: file.file) others
+            );
         };
 
         # Check if a path is an sdist or a nested project
