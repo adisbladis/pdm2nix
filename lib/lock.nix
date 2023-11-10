@@ -5,7 +5,7 @@
 
 lib.fix (self:
 let
-  inherit (builtins) hasAttr splitVersion head filter length nixVersion baseNameOf match readDir pathExists;
+  inherit (builtins) hasAttr splitVersion head filter length nixVersion baseNameOf match pathExists;
   inherit (pyproject-nix.lib) pep508 pypa;
   inherit (lib) flatten filterAttrs attrValues optionalAttrs listToAttrs nameValuePair versionAtLeast;
 

@@ -2,11 +2,11 @@
 , pyproject-nix
 , pdm2nix
 , pkgs
-,
 }:
 let
   callTest = path: args: import path (args // {
-    inherit lib pyproject-nix pdm2nix;
+    python3 = args.python3 or pkgs.python3;
+    inherit lib pyproject-nix pdm2nix overrides;
   });
 
   # A small set of overrides for packages used in tests.
@@ -34,7 +34,6 @@ let
 
 in
 {
-  trivial = callTest ./trivial {
-    inherit (pkgs) python3 overrides;
-  };
+  trivial = callTest ./trivial { };
+  nested = callTest ./nested { };
 }

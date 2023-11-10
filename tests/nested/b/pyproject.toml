@@ -1,0 +1,17 @@
+[project]
+name = "b"
+version = "0.1.0"
+description = "Dummy project depended on by a"
+authors = [
+    {name = "adisbladis", email = "adisbladis@gmail.com"},
+]
+dependencies = [
+    "certifi",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"

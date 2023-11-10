@@ -1,0 +1,18 @@
+[project]
+name = "a"
+version = "0.1.0"
+description = "Simple project A"
+authors = [
+    {name = "adisbladis", email = "adisbladis@gmail.com"},
+]
+dependencies = [
+    # Local dependency (path)
+    "b @ file:///${PROJECT_ROOT}/../b",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
