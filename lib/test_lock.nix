@@ -86,12 +86,13 @@
             (lib.filter (name: name != "__pdm2nix") names);
         };
       expected = {
-        names = [ "__pdm2nix" "arpeggio" "attrs" "b" "blinker" "certifi" "charset-normalizer" "idna" "pip" "pyasn1-modules" "requests" "resolvelib" "ruamel-yaml-clib" "urllib3" ];
+        names = [ "__pdm2nix" "arpeggio" "attrs" "b" "blinker" "c" "certifi" "charset-normalizer" "idna" "pip" "pyasn1-modules" "requests" "resolvelib" "ruamel-yaml-clib" "urllib3" ];
         pkgs = [
           { pname = "arpeggio"; version = "2.0.2"; }
           { pname = "attrs"; version = "23.1.0"; }
           { pname = "b"; version = "0.1.0"; }
           { pname = "blinker"; version = "1.6.2"; }
+          { pname = "c"; version = "0.1.0"; }
           { pname = "certifi"; version = "2023.7.22"; }
           { pname = "charset-normalizer"; version = "3.3.2"; }
           { pname = "idna"; version = "3.4"; }
@@ -160,7 +161,6 @@
           src = {
             format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/arpeggio/Arpeggio-2.0.0.tar.gz" ];
-            fetcher = "fetchFromPypi";
           };
         };
       };
@@ -199,7 +199,6 @@
           src = {
             format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/arrow/arrow-1.2.3.tar.gz" ];
-            fetcher = "fetchFromPypi";
           };
         };
       };
@@ -233,7 +232,6 @@
           src = {
             format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/dummy/arrow-1.2.3.tar.gz" ];
-            fetcher = "fetchFromPypi";
           };
         };
       };
@@ -293,7 +291,6 @@
           format = "pyproject";
           isWheel = false;
           urls = [ "https://pypi.org/simple" ];
-          fetcher = "fetchFromLegacy";
         };
       };
 
@@ -306,7 +303,6 @@
         expected = {
           format = "wheel";
           url = "https://files.pythonhosted.org/packages/f7/4f/d28bf30a19d4649b40b501d531b44e73afada99044df100380fd9567e92f/Arpeggio-2.0.2-py2.py3-none-any.whl";
-          fetcher = "fetchurl";
         };
       };
 
@@ -332,7 +328,6 @@
         expected = {
           allRefs = true;
           passthru.format = "pyproject";
-          passthru.fetcher = "fetchGit";
           ref = "refs/tags/20.3.1";
           rev = "f94a429e17b450ac2d3432f46492416ac2cf58ad";
           submodules = true;

@@ -33,8 +33,7 @@ let
   };
 
 in
-{
-  trivial = callTest ./trivial { };
-  nested = callTest ./nested { };
-  nested-poetry = callTest ./nested-poetry { };
-}
+# Call all test cases from ./*
+lib.mapAttrs
+  (name: _: callTest (./. + "/${name}") { })
+  (lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./.))

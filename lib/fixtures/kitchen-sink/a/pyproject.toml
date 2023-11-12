@@ -44,3 +44,9 @@ license = {text = "MIT"}
 name = "private"
 url = "https://pypi.org/simple"  # Use PyPi legacy API as a "private" pypi
 include_packages = ["resolvelib", "resolvelib-*"]
+
+# Editable dependencies are always in the dev group.
+[tool.pdm.dev-dependencies]
+dev = [
+    "-e file:///${PROJECT_ROOT}/../c-editable#egg=c",
+]

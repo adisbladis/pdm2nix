@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default"]
+groups = ["default", "dev"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:1522cbc768ee87316718d7b332431103f6cd6395db22689dbbc5053606f2906a"
+content_hash = "sha256:6f98b9ae565ba8ba1ad8da564962f7cc3bb24b59a5999e137693f0a706d5c89e"
 
 [[package]]
 name = "arpeggio"
@@ -45,6 +45,14 @@ summary = "Fast, simple object-to-object and broadcast signaling"
 files = [
     {file = "blinker-1.6.2.tar.gz", hash = "sha256:4afd3de66ef3a9f8067559fb7a1cbe555c17dcbe15971b05d1b625c3e7abe213"},
 ]
+
+[[package]]
+name = "c"
+version = "0.1.0"
+requires_python = ">=3.11"
+editable = true
+path = "../c-editable"
+summary = "Dummy project depended on in editable mode by a"
 
 [[package]]
 name = "certifi"
