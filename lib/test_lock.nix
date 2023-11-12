@@ -159,7 +159,6 @@
           propagatedBuildInputs = [ ];
           version = "2.0.0";
           src = {
-            format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/arpeggio/Arpeggio-2.0.0.tar.gz" ];
           };
         };
@@ -197,7 +196,6 @@
           propagatedBuildInputs = [ "python-dateutil" ];
           version = "1.2.3";
           src = {
-            format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/arrow/arrow-1.2.3.tar.gz" ];
           };
         };
@@ -230,7 +228,6 @@
           propagatedBuildInputs = [ "cachecontrol" "filelock" ];
           version = "1.2.3";
           src = {
-            format = "pyproject";
             urls = [ "https://files.pythonhosted.org/packages/source/a/dummy/arrow-1.2.3.tar.gz" ];
           };
         };
@@ -288,7 +285,6 @@
           in
           src;
         expected = {
-          format = "pyproject";
           isWheel = false;
           urls = [ "https://pypi.org/simple" ];
         };
@@ -301,7 +297,6 @@
           filename = "Arpeggio-2.0.2-py2.py3-none-any.whl";
         }).passthru;
         expected = {
-          format = "wheel";
           url = "https://files.pythonhosted.org/packages/f7/4f/d28bf30a19d4649b40b501d531b44e73afada99044df100380fd9567e92f/Arpeggio-2.0.2-py2.py3-none-any.whl";
         };
       };
@@ -324,10 +319,9 @@
             };
           in
           assert lib.hasAttr "outPath" src;
-          { inherit (src) ref allRefs submodules rev passthru; };
+          { inherit (src) ref allRefs submodules rev; };
         expected = {
           allRefs = true;
-          passthru.format = "pyproject";
           ref = "refs/tags/20.3.1";
           rev = "f94a429e17b450ac2d3432f46492416ac2cf58ad";
           submodules = true;
@@ -346,10 +340,8 @@
           {
             isStorePath = lib.isStorePath "${src}";
             hasSuffix = lib.hasSuffix "attrs-23.1.0.tar.gz" "${src}";
-            inherit (src) format;
           };
         expected = {
-          format = "pyproject";
           isStorePath = true;
           hasSuffix = true;
         };

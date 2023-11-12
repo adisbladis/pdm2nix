@@ -163,12 +163,6 @@ in
       filesByFileName = listToAttrs (map (file: nameValuePair file.file file) package.files);
       file = filesByFileName.${filename} or (throw "Filename '${filename}' not present in package");
 
-      format =
-        if pypa.isSdistFileName filename then "pyproject"
-        else if pypa.isWheelFileName filename then "wheel"
-        else if pypa.isEggFileName filename then "egg"
-        else throw "Could not infer format from filename '${filename}'";
-
     in
     if hasAttr "git" package then
       ((
@@ -184,10 +178,7 @@ in
           allRefs = true;
           submodules = true;
         }
-      ) // {
-        passthru.format = "pyproject";
-        format = "pyproject";
-      })
+      ))
     else if hasAttr "hg" package then
       ((
         builtins.fetchMercurial
@@ -195,28 +186,17 @@ in
             url = package.hg;
             rev = package.revision;
           }
-      ) // {
-        passthru.format = "pyproject";
-        format = "pyproject";
-      })
+      ))
     else if hasAttr "url" package then
       ((
         fetchurl {
           url = assert (baseNameOf package.url) == filename; package.url;
           inherit (file) hash;
         }
-      ).overrideAttrs (
-        old: {
-          passthru = old.passthru // {
-            inherit format;
-          };
-        }
       )
       )
     else if hasAttr "path" package then
       {
-        passthru.format = "pyproject";
-        format = "pyproject";
         outPath = projectRoot + "/${package.path}";
       }
     else
@@ -251,20 +231,11 @@ in
             pname = package.name;
             inherit (package) version;
             inherit (file) file hash;
-          }).overrideAttrs
-            (old: {
-              passthru = old.passthru // {
-                inherit format;
-              };
-            }) else
+          }) else
           (fetchFromLegacy {
             urls = map (source: source.url) activeSources;
             pname = package.name;
             inherit (file) file hash;
-          }).overrideAttrs (old: {
-            passthru = old.passthru // {
-              inherit format;
-            };
           })
       );
 
@@ -319,27 +290,36 @@ in
         preferWheel ? preferWheels
       }:
       let
+        # Select filename based on preference order.
+        # By default we prefer sdists, but can optionally prefer to order wheels first.
+        filenames =
+          let
+            selectedWheels = selectWheels wheels python;
+            selectedSdists = map (file: file.file) sdists;
+          in (
+            if preferWheel then selectedWheels ++ selectedSdists
+            else selectedSdists ++ selectedWheels
+          ) ++ selectEggs eggs python ++ map (file: file.file) others;
+
+        filename = head filenames;
+
+        format =
+          if length filenames == 0 then "pyproject"
+          else if pypa.isSdistFileName filename then "pyproject"
+          else if pypa.isWheelFileName filename then "wheel"
+          else if pypa.isEggFileName filename then "egg"
+          else throw "Could not infer format from filename '${filename}'";
+
         src = __pdm2nix.fetchPDMPackage {
           inherit (project) pyproject projectRoot;
-          inherit package;
-          filename =
-            let
-              selectedWheels = selectWheels wheels python;
-              selectedSdists = map (file: file.file) sdists;
-            in
-            optionalHead (
-              (
-                if preferWheel then selectedWheels ++ selectedSdists
-                else selectedSdists ++ selectedWheels
-              ) ++ selectEggs eggs python ++ map (file: file.file) others
-            );
+          inherit package filename;
         };
+
       in
       buildPythonPackage
         {
           pname = name;
-          inherit version src;
-          inherit (src) format;
+          inherit version src format;
 
           doCheck = false; # No development deps in pdm.lock
 
@@ -369,7 +349,7 @@ in
             );
           };
         }
-      // optionalAttrs (src.format == "wheel") {
+      // optionalAttrs (format == "wheel") {
         # Don't strip prebuilt wheels
         dontStrip = true;
       }
