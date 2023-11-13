@@ -1,9 +1,19 @@
 # Contents
 
-- [Hacking](./HACKING.md)
+- [Introduction](./introduction.md)
+
+# Usage
+
+- [Basic usage](./basic.md)
+
+# Meta
+
 - [FAQ](./FAQ.md)
 
 # Reference
 
-- [Overlays](./lib/overlays.nix)
 - [Lock](./lib/lock.nix)
+
+# Contributing
+
+- [Hacking](./HACKING.md)
