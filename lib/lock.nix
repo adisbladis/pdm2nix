@@ -35,13 +35,15 @@ let
   # This is used in the overlay to create PEP-508 environments & fetchers that don't need to be instantiated for every package.
   mkPdm2Nix = { python, callPackage }: {
     environ = pep508.mkEnviron python;
-    fetchPDMPackage = python.pkgs.callPackage self.mkFetchPDMPackage {
+    fetchPDMPackage = python.pkgs.callPackage self.fetchPDMPackage {
       # Get from Flake attribute first, falling back to regular attribute access
       fetchFromPypi = pyproject-nix.fetchers.${python.system}.fetchFromPypi or pyproject-nix.fetchers.fetchFromPypi;
       fetchFromLegacy = pyproject-nix.fetchers.${python.system}.fetchFromLegacy or pyproject-nix.fetchers.fetchFromLegacy;
     };
     mkEditablePackage = callPackage editable.mkEditablePackage { };
   };
+
+  optionalHead = list: if length list > 0 then head list else null;
 
 in
 {
@@ -132,9 +134,6 @@ in
       __pdm2nix = final.callPackage mkPdm2Nix { };
     } // pkgs);
 
-  /*
-    Partition list of attrset from `package.files` into groups of sdists, wheels, eggs, and others
-    */
   partitionFiles =
     # List of files from poetry.lock -> package segment
     files:
@@ -153,7 +152,7 @@ in
   /*
     Fetch a package from pdm.lock
     */
-  mkFetchPDMPackage =
+  fetchPDMPackage =
     { fetchFromPypi
     , fetchurl
     , fetchFromLegacy
@@ -247,9 +246,6 @@ in
           })
       );
 
-  /*
-    Make package from pdm.lock contents
-    */
   mkPackage =
     {
       # Project as returned by pyproject.lib.project.loadPDMPyProject
@@ -294,6 +290,11 @@ in
       , pythonPackages
       , callPackage
       , buildPythonPackage
+      , autoPatchelfHook
+      , wheelUnpackHook
+      , pypaInstallHook
+      , pythonManylinuxPackages
+      , stdenv
       , __pdm2nix ? callPackage mkPdm2Nix { }
       , # Whether to prefer prebuilt binary wheels over sdists
         preferWheel ? preferWheels
@@ -311,11 +312,10 @@ in
             else selectedSdists ++ selectedWheels
           ) ++ selectEggs eggs python ++ map (file: file.file) others;
 
-        filename = head filenames;
+        filename = optionalHead filenames;
 
         format =
-          if length filenames == 0 then "pyproject"
-          else if pypa.isSdistFileName filename then "pyproject"
+          if filename == null || pypa.isSdistFileName filename then "pyproject"
           else if pypa.isWheelFileName filename then "wheel"
           else if pyproject-nix.lib.eggs.isEggFileName filename then "egg"
           else throw "Could not infer format from filename '${filename}'";
@@ -327,7 +327,7 @@ in
 
       in
       buildPythonPackage
-        {
+        ({
           pname = name;
           inherit version src format;
 
@@ -352,10 +352,33 @@ in
             description = summary;
           };
         }
-      // optionalAttrs (format == "wheel") {
-        # Don't strip prebuilt wheels
-        dontStrip = true;
-      }
+        // optionalAttrs (format == "wheel") {
+          # Don't strip prebuilt wheels
+          dontStrip = builtins.trace filename true;
+
+          # Add wheel utils
+          nativeBuildInputs =
+            [ wheelUnpackHook pypaInstallHook ]
+              ++ lib.optional stdenv.isLinux autoPatchelfHook
+          ;
+
+          buildInputs =
+            # Add manylinux platform dependencies.
+            lib.optionals (stdenv.isLinux && stdenv.hostPlatform.libc == "glibc") (lib.unique (lib.flatten (
+              let
+                parsed = pyproject-nix.lib.pypa.parseWheelFileName filename;
+              in
+              map
+                (tag: (
+                  if lib.hasPrefix "manylinux1" tag then pythonManylinuxPackages.manylinux1
+                  else if lib.hasPrefix "manylinux2010" tag then pythonManylinuxPackages.manylinux2010
+                  else if lib.hasPrefix "manylinux2014" tag then pythonManylinuxPackages.manylinux2014
+                  else if lib.hasPrefix "manylinux_" tag then pythonManylinuxPackages.manylinux2014
+                  else [ ]  # Any other type of wheel don't need manylinux inputs
+                ))
+                parsed.platformTags
+            )));
+        })
 
     );
 })

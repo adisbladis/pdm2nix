@@ -105,6 +105,34 @@
         ];
       };
     };
+
+    testKitchenSinkPreferWheels = {
+      expr =
+        let
+          overlay = lock.mkOverlay {
+            project = pyproject-nix.lib.project.loadPDMPyproject { projectRoot = ./fixtures/kitchen-sink/a; };
+            preferWheels = true;
+          };
+
+          python = pkgs.python311.override {
+            self = python;
+            packageOverrides = lib.composeExtensions overlay (_final: _prev: {
+              # error: in pure evaluation mode, 'fetchMercurial' requires a Mercurial revision
+              ruamel-yaml-clib = {
+                pname = "ruamel-yaml-clib";
+                version = "0.1.0";
+              };
+            });
+          };
+
+        in
+        {
+          isCorrectFile = lib.hasSuffix "Arpeggio-2.0.2-py2.py3-none-any.whl" "${python.pkgs.arpeggio.src}";
+        };
+      expected = {
+        isCorrectFile = true;
+      };
+    };
   };
 
   mkPackage =
@@ -253,7 +281,7 @@
     };
   };
 
-  mkFetchPDMPackage =
+  fetchPDMPackage =
     let
       pyproject = lib.importTOML ./fixtures/kitchen-sink/a/pyproject.toml;
       pdmLock = lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock;
@@ -263,7 +291,7 @@
         let
           system = "x86_64-linux";
         in
-        pkgs.callPackage lock.mkFetchPDMPackage {
+        pkgs.callPackage lock.fetchPDMPackage {
           inherit (pyproject-nix.fetchers.${system}) fetchFromPypi;
           inherit (pyproject-nix.fetchers.${system}) fetchFromLegacy;
         };
