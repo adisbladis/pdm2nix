@@ -12,7 +12,7 @@ let
   python = python3.override {
     self = python;
     packageOverrides = lib.composeManyExtensions [
-      (pdm2nix.lib.lock.mkOverlay { inherit project; })
+      (pdm2nix.lib.lock.mkOverlay { inherit project; preferWheels = false; })
       overrides
     ];
   };

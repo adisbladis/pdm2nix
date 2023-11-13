@@ -23,6 +23,12 @@
           # Create overlay using pdm2nix
           overlay' = pdm2nix.lib.lock.mkOverlay {
             inherit project;
+
+            # Use sdists over binary wheels.
+            #
+            # This is less likely to work out of the box than `preferWheels = true`,
+            # but comes with significant trade-offs.
+            preferWheels = false;
           };
 
           # Pdm2nix can only work with what it has, and pdm.lock is missing essential metadata to perform some builds.

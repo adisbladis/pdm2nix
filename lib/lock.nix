@@ -55,7 +55,7 @@ in
       # PDM project from pyproject.lib.project loadPDMPyproject
       project
     , # Whether to prefer prebuilt binary wheels over sdists
-      preferWheels ? false
+      preferWheels
     ,
     }:
     let

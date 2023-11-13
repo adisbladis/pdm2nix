@@ -18,7 +18,7 @@ let
   overlay =
     let
       # Create overlay using pdm2nix
-      overlay' = pdm2nix.lib.lock.mkOverlay { inherit project; };
+      overlay' = pdm2nix.lib.lock.mkOverlay { inherit project; preferWheels = false; };
     in
     # Apply some build system fixes.
     lib.composeExtensions overlay' overrides;

@@ -9,6 +9,7 @@
   mkOverlay = {
     testWrongMetadataVersion = {
       expr = lock.mkOverlay {
+        preferWheels = false;
         project = {
           pdmLock = {
             metadata = {
@@ -26,6 +27,7 @@
         let
           overlay = lock.mkOverlay {
             project = pyproject-nix.lib.project.loadPDMPyproject { projectRoot = ./fixtures/trivial; };
+            preferWheels = false;
           };
 
           python = pkgs.python311.override {
@@ -59,6 +61,7 @@
         let
           overlay = lock.mkOverlay {
             project = pyproject-nix.lib.project.loadPDMPyproject { projectRoot = ./fixtures/kitchen-sink/a; };
+            preferWheels = false;
           };
 
           python = pkgs.python311.override {
