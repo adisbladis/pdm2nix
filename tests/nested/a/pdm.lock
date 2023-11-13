@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default"]
+groups = ["default", "dev"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:a2610f14c9e96b7b44e1aae19596c06ae8905c3ff0beec4d2bf734cd55cb3d9b"
+content_hash = "sha256:7fb1ab4bf0b5690eb52dfa33af4e5ed30d37b3eec1a387aa8ad8060a9bc10bc3"
 
 [[package]]
 name = "b"
@@ -16,6 +16,14 @@ summary = "Dummy project depended on by a"
 dependencies = [
     "certifi",
 ]
+
+[[package]]
+name = "c"
+version = "0.1.0"
+requires_python = ">=3.11"
+editable = true
+path = "../c-editable"
+summary = "Dummy project depended on in editable mode by a"
 
 [[package]]
 name = "certifi"

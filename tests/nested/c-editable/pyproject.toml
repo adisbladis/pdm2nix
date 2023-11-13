@@ -1,0 +1,10 @@
+[project]
+name = "c"
+version = "0.1.0"
+description = "Dummy project depended on in editable mode by a"
+authors = [
+    {name = "adisbladis", email = "adisbladis@gmail.com"},
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}

@@ -19,7 +19,7 @@ let
     map (wheel: wheel.filename) compatibleWheels;
 
   # Select the best compatible egg from a list of eggs
-  selectEggs = eggs: python: map (egg: egg.filename) (pypa.selectEggs python (map (egg: pypa.parseEggFileName egg.file) eggs));
+  selectEggs = eggs: python: map (egg: egg.filename) (pyproject-nix.lib.eggs.selectEggs python (map (egg: pyproject-nix.lib.eggs.parseEggFileName egg.file) eggs));
 
   # Take the first element of a list, return null for empty
 
@@ -96,7 +96,7 @@ in
             in
             if isEditable then
               (
-                final.callPackage final.__pdm2nix.mkEditablePackage {
+                final.__pdm2nix.mkEditablePackage {
                   pname = package.name;
                   inherit (package) version;
                   inherit path;
@@ -141,7 +141,7 @@ in
     let
       wheels = lib.lists.partition (f: pypa.isWheelFileName f.file) files;
       sdists = lib.lists.partition (f: pypa.isSdistFileName f.file) wheels.wrong;
-      eggs = lib.lists.partition (f: pypa.isEggFileName f.file) sdists.wrong;
+      eggs = lib.lists.partition (f: pyproject-nix.lib.eggs.isEggFileName f.file) sdists.wrong;
     in
     {
       sdists = sdists.right;
@@ -317,7 +317,7 @@ in
           if length filenames == 0 then "pyproject"
           else if pypa.isSdistFileName filename then "pyproject"
           else if pypa.isWheelFileName filename then "wheel"
-          else if pypa.isEggFileName filename then "egg"
+          else if pyproject-nix.lib.eggs.isEggFileName filename then "egg"
           else throw "Could not infer format from filename '${filename}'";
 
         src = __pdm2nix.fetchPDMPackage {

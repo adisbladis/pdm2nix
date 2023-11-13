@@ -18,6 +18,9 @@ let
   };
 
 in
-python.pkgs.buildPythonPackage (
-  project.renderers.buildPythonPackage { inherit python; }
+python.withPackages (
+  project.renderers.withPackages {
+    inherit python;
+    extras = [ "dev" ];
+  }
 )
