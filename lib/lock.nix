@@ -1,5 +1,6 @@
 { lib
 , pyproject-nix
+, editable
 , ...
 }:
 
@@ -21,7 +22,6 @@ let
   selectEggs = eggs: python: map (egg: egg.filename) (pypa.selectEggs python (map (egg: pypa.parseEggFileName egg.file) eggs));
 
   # Take the first element of a list, return null for empty
-  optionalHead = list: if length list > 0 then head list else null;
 
   # Match str against a glob pattern
   matchGlob =
@@ -33,13 +33,14 @@ let
 
   # Make the internal __pdm2nix overlay attribute.
   # This is used in the overlay to create PEP-508 environments & fetchers that don't need to be instantiated for every package.
-  mkPdm2Nix = { python }: {
+  mkPdm2Nix = { python, callPackage }: {
     environ = pep508.mkEnviron python;
     fetchPDMPackage = python.pkgs.callPackage self.mkFetchPDMPackage {
       # Get from Flake attribute first, falling back to regular attribute access
       fetchFromPypi = pyproject-nix.fetchers.${python.system}.fetchFromPypi or pyproject-nix.fetchers.fetchFromPypi;
       fetchFromLegacy = pyproject-nix.fetchers.${python.system}.fetchFromLegacy or pyproject-nix.fetchers.fetchFromLegacy;
     };
+    mkEditablePackage = callPackage editable.mkEditablePackage { };
   };
 
 in
@@ -83,6 +84,7 @@ in
             # - If a package is a nested pyproject load it
             # - Otherwise generate purely from pdm.lock metadata
             let
+              isEditable = hasAttr "editable" package;
               isPath = hasAttr "path" package;
               path = project.projectRoot + "/${package.path}";
 
@@ -92,10 +94,17 @@ in
               hasPyproject = isPath && pathExists "${path}/pyproject.toml";
 
             in
-            # If a package is from a local default.nix, callPackage the path directly
-            if hasNix then final.callPackage defaultNix { }
+            if isEditable then
+              (
+                final.callPackage final.__pdm2nix.mkEditablePackage {
+                  pname = package.name;
+                  inherit (package) version;
+                  inherit path;
+                }
+              )
 
-            # TODO: Editable packages
+            # If a package is from a local default.nix, callPackage the path directly
+            else if hasNix then final.callPackage defaultNix { }
 
             # Import nested pyproject.toml
             else if hasPyproject then
@@ -165,7 +174,7 @@ in
 
     in
     if hasAttr "git" package then
-      ((
+      (
         builtins.fetchGit
           {
             url = package.git;
@@ -178,22 +187,21 @@ in
           allRefs = true;
           submodules = true;
         }
-      ))
+      )
     else if hasAttr "hg" package then
-      ((
+      (
         builtins.fetchMercurial
           {
             url = package.hg;
             rev = package.revision;
           }
-      ))
+      )
     else if hasAttr "url" package then
-      ((
+      (
         fetchurl {
           url = assert (baseNameOf package.url) == filename; package.url;
           inherit (file) hash;
         }
-      )
       )
     else if hasAttr "path" package then
       {
@@ -258,9 +266,7 @@ in
       version
     , # Summary (description)
       summary
-    , # Python interpreter PEP-440 constraints
-      requires_python ? ""
-    , # List of PEP-508 strings
+    , # Python interpreter PEP-440 constraints # List of PEP-508 strings
       dependencies ? [ ]
     , # List of attrset with files
       files ? [ ]
@@ -278,6 +284,8 @@ in
       hg ? null # deadnix: skip
     , # Editable path
       editable ? false # deadnix: skip
+    , # Python constraint
+      requires_python ? "" # deadnix: skip
     }@package: (
       let
         inherit (self.partitionFiles files) wheels sdists eggs others;
@@ -297,7 +305,8 @@ in
           let
             selectedWheels = selectWheels wheels python;
             selectedSdists = map (file: file.file) sdists;
-          in (
+          in
+          (
             if preferWheel then selectedWheels ++ selectedSdists
             else selectedSdists ++ selectedWheels
           ) ++ selectEggs eggs python ++ map (file: file.file) others;

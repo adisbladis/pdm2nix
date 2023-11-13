@@ -18,9 +18,9 @@
     , entrypoints ? { }
     }:
     toPythonModule (runCommand "${pname}-${version}"
-    {
-      inherit pname version;
-    } ''
+      {
+        inherit pname version;
+      } ''
       mkdir -p "$out/${python.sitePackages}"
       cd "$out/${python.sitePackages}"
 

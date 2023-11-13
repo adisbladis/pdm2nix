@@ -1,5 +1,4 @@
-{ lib
-, editable
+{ editable
 , ...
 }:
 
@@ -9,7 +8,7 @@ let
     python = {
       sitePackages = "site-packages";
     };
-    runCommand = name: attrs: command: {
+    runCommand = _name: attrs: command: {
       inherit attrs command;
     };
     toPythonModule = x: x;
