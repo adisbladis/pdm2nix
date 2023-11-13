@@ -33,14 +33,13 @@ let
 
   # Make the internal __pdm2nix overlay attribute.
   # This is used in the overlay to create PEP-508 environments & fetchers that don't need to be instantiated for every package.
-  mkPdm2Nix = python: {
+  mkPdm2Nix = { python }: {
     environ = pep508.mkEnviron python;
     fetchPDMPackage = python.pkgs.callPackage self.mkFetchPDMPackage {
       # Get from Flake attribute first, falling back to regular attribute access
       fetchFromPypi = pyproject-nix.fetchers.${python.system}.fetchFromPypi or pyproject-nix.fetchers.fetchFromPypi;
       fetchFromLegacy = pyproject-nix.fetchers.${python.system}.fetchFromLegacy or pyproject-nix.fetchers.fetchFromLegacy;
     };
-    pyVersion = pyproject-nix.lib.pep440.parseVersion python.version;
   };
 
 in
@@ -64,14 +63,13 @@ in
     assert lockMajor == "4";
     (final: prev:
     let
-      # Internal metadata/fetchers
-      __pdm2nix = mkPdm2Nix prev.python;
+      pyVersion = pyproject-nix.lib.pep440.parseVersion prev.python.version;
 
       # Filter pdm.lock based on requires_python
       compatible = filter
         (package: ! hasAttr "requires_python" package || (
           lib.all
-            (spec: pyproject-nix.lib.pep440.comparators.${spec.op} __pdm2nix.pyVersion spec.version)
+            (spec: pyproject-nix.lib.pep440.comparators.${spec.op} pyVersion spec.version)
             (pyproject-nix.lib.pep440.parseVersionConds package.requires_python)
         ))
         project.pdmLock.package;
@@ -121,7 +119,9 @@ in
       );
 
     in
-    { inherit __pdm2nix; } // pkgs);
+    {
+      __pdm2nix = final.callPackage mkPdm2Nix { };
+    } // pkgs);
 
   /*
     Partition list of attrset from `package.files` into groups of sdists, wheels, eggs, and others
@@ -284,8 +284,9 @@ in
       in
       { python
       , pythonPackages
+      , callPackage
       , buildPythonPackage
-      , __pdm2nix ? mkPdm2Nix python
+      , __pdm2nix ? callPackage mkPdm2Nix { }
       , # Whether to prefer prebuilt binary wheels over sdists
         preferWheel ? preferWheels
       }:
@@ -340,13 +341,6 @@ in
 
           meta = {
             description = summary;
-
-            # Mark as broken if Python version constraints don't match.
-            broken = ! (
-              lib.all
-                (spec: pyproject-nix.lib.pep440.comparators.${spec.op} __pdm2nix.pyVersion spec.version)
-                (pyproject-nix.lib.pep440.parseVersionConds requires_python)
-            );
           };
         }
       // optionalAttrs (format == "wheel") {

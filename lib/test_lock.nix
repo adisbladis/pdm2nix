@@ -152,7 +152,6 @@
           doCheck = false;
           format = "pyproject";
           meta = {
-            broken = false;
             description = "Packrat parser interpreter";
           };
           pname = "arpeggio";
@@ -189,7 +188,6 @@
           doCheck = false;
           format = "pyproject";
           meta = {
-            broken = false;
             description = "Better dates & times for Python";
           };
           pname = "arrow";
@@ -221,7 +219,6 @@
           doCheck = false;
           format = "pyproject";
           meta = {
-            broken = false;
             description = "Dummy test package";
           };
           pname = "dummy";
