@@ -12,6 +12,7 @@ let
   callTest = path: import path (pdm2nix // { inherit pkgs lib pyproject-nix; });
 in
 lib.fix (self: {
+  editable = callTest ./test_editable.nix;
   overlays = callTest ./test_overlays.nix;
   lock = callTest ./test_lock.nix;
 
