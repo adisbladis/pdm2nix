@@ -26,8 +26,8 @@
 
             # Use sdists over binary wheels.
             #
-            # This is less likely to work out of the box than `preferWheels = true`,
-            # but comes with significant trade-offs.
+            # Sdists are less likely to "just work" because of the metadata missing from pdm.lock.
+            # Binary wheels are more likely to, but may still require overrides for library dependencies.
             preferWheels = false;
           };
 
@@ -35,6 +35,7 @@
           # Some notable metadata missing is:
           # - PEP-517 build-systems
           # - Native dependencies
+          # - Non-python dependencies
           #
           # The poetry2nix project has existing overlays you can use that fixes a lot of common issues, but you might
           # need to supplement your own.
