@@ -35,11 +35,8 @@ let
   # This is used in the overlay to create PEP-508 environments & fetchers that don't need to be instantiated for every package.
   mkPdm2Nix = { python, callPackage }: {
     environ = pep508.mkEnviron python;
-    fetchPDMPackage = python.pkgs.callPackage self.fetchPDMPackage {
-      # Get from Flake attribute first, falling back to regular attribute access
-      fetchFromPypi = pyproject-nix.fetchers.${python.system}.fetchFromPypi or pyproject-nix.fetchers.fetchFromPypi;
-      fetchFromLegacy = pyproject-nix.fetchers.${python.system}.fetchFromLegacy or pyproject-nix.fetchers.fetchFromLegacy;
-    };
+    fetchPDMPackage = python.pkgs.callPackage self.fetchPDMPackage { };
+    # TODO: Drop mkEditablePackage, it doesn't belong in pdm2nix.
     mkEditablePackage = callPackage editable.mkEditablePackage { };
   };
 
@@ -153,9 +150,8 @@ in
     Fetch a package from pdm.lock
     */
   fetchPDMPackage =
-    { fetchFromPypi
+    { fetchPypiLegacy
     , fetchurl
-    , fetchFromLegacy
     }: {
          # The specific package segment from pdm.lock
          package
@@ -234,12 +230,13 @@ in
 
         in
         if sources' == [ ] then
-          (fetchFromPypi {
+          (fetchPypiLegacy {
             pname = package.name;
-            inherit (package) version;
             inherit (file) file hash;
-          }) else
-          (fetchFromLegacy {
+            url = "https://pypi.org/simple";
+          })
+        else
+          (fetchPypiLegacy {
             urls = map (source: source.url) activeSources;
             pname = package.name;
             inherit (file) file hash;

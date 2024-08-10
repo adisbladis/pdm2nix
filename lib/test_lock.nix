@@ -188,9 +188,7 @@
           pname = "arpeggio";
           propagatedBuildInputs = [ ];
           version = "2.0.0";
-          src = {
-            urls = [ "https://files.pythonhosted.org/packages/source/a/arpeggio/Arpeggio-2.0.0.tar.gz" ];
-          };
+          src = { };
         };
       };
 
@@ -224,9 +222,7 @@
           pname = "arrow";
           propagatedBuildInputs = [ "python-dateutil" ];
           version = "1.2.3";
-          src = {
-            urls = [ "https://files.pythonhosted.org/packages/source/a/arrow/arrow-1.2.3.tar.gz" ];
-          };
+          src = { };
         };
       };
 
@@ -255,9 +251,7 @@
           pname = "dummy";
           propagatedBuildInputs = [ "cachecontrol" "filelock" ];
           version = "1.2.3";
-          src = {
-            urls = [ "https://files.pythonhosted.org/packages/source/a/dummy/arrow-1.2.3.tar.gz" ];
-          };
+          src = { };
         };
       };
     };
@@ -289,16 +283,7 @@
       pyproject = lib.importTOML ./fixtures/kitchen-sink/a/pyproject.toml;
       pdmLock = lib.importTOML ./fixtures/kitchen-sink/a/pdm.lock;
       projectRoot = ./fixtures/kitchen-sink/a;
-
-      fetchPDMPackage =
-        let
-          system = "x86_64-linux";
-        in
-        pkgs.callPackage lock.fetchPDMPackage {
-          inherit (pyproject-nix.fetchers.${system}) fetchFromPypi;
-          inherit (pyproject-nix.fetchers.${system}) fetchFromLegacy;
-        };
-
+      fetchPDMPackage = pkgs.callPackage lock.fetchPDMPackage { };
       findPackage = name: lib.findFirst (pkg: pkg.name == name) (throw "package '${name} not found") pdmLock.package;
     in
     {
@@ -312,10 +297,7 @@
             }).passthru;
           in
           src;
-        expected = {
-          isWheel = false;
-          urls = [ "https://pypi.org/simple" ];
-        };
+        expected = { };
       };
 
       testURL = {

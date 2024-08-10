@@ -14,9 +14,6 @@
     nix-github-actions.url = "github:nix-community/nix-github-actions";
     nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
 
-    nix-unit.url = "github:nix-community/nix-unit";
-    nix-unit.inputs.nixpkgs.follows = "nixpkgs";
-
     nixdoc.url = "github:nix-community/nixdoc";
     nixdoc.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -32,8 +29,7 @@
     , nixpkgs
     , nix-github-actions
     , flake-parts
-    , treefmt-nix
-    , nix-unit
+    # , treefmt-nix
     , nixdoc
     , pyproject-nix
     , ...
@@ -99,11 +95,8 @@
           , system
           , ...
           }:
-          let
-            nixUnit = nix-unit.packages.${system}.nix-unit;
-          in
           {
-            treefmt.imports = [ ./dev/treefmt.nix ];
+            treefmt.imports = [ ];
 
             checks = builtins.removeAttrs self.packages.${system} [ "default" ] // (
               import ./tests {
@@ -113,7 +106,7 @@
             );
 
             proc.groups.run.processes = {
-              nix-unittest.command = "${lib.getExe' pkgs.reflex "reflex"} -r '\.(nix)$' -- ${lib.getExe' nixUnit "nix-unit"} --quiet --flake '.#libTests'";
+              nix-unittest.command = "${lib.getExe' pkgs.reflex "reflex"} -r '\.(nix)$' -- ${lib.getExe' pkgs.nix-unit "nix-unit"} --quiet --flake '.#libTests'";
               mdbook.command = "(cd doc && mdbook serve)";
             };
 
@@ -122,7 +115,7 @@
               packages =
                 [
                   config.proc.groups.run.package
-                  nixUnit
+                  pkgs.nix-unit
                   inputs.mdbook-nixdoc.packages.${system}.default
                   pkgs.pdm
                   pkgs.mercurial
