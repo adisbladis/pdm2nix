@@ -48,7 +48,7 @@
         ];
 
         imports = [
-          inputs.treefmt-nix.flakeModule
+          # inputs.treefmt-nix.flakeModule
           inputs.flake-root.flakeModule
           inputs.proc-flake.flakeModule
         ];
@@ -96,8 +96,6 @@
           , ...
           }:
           {
-            treefmt.imports = [ ];
-
             checks = builtins.removeAttrs self.packages.${system} [ "default" ] // (
               import ./tests {
                 inherit lib pyproject-nix pkgs;

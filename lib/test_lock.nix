@@ -56,6 +56,26 @@
       };
     };
 
+    testWithMarker = {
+      # Colorama is only available for win32 according to it's marker.
+      # Ensure that a package is skipped when it's marker indicates it shouldn't be available for a platform.
+      expr = let
+        overlay = lock.mkOverlay {
+          project = pyproject-nix.lib.project.loadPDMPyproject { projectRoot = ./fixtures/with-marker; };
+          preferWheels = false;
+        };
+
+        python = pkgs.python311.override {
+          self = python;
+          packageOverrides = lib.composeExtensions (_final: _prev: {
+            colorama = null;
+          }) overlay;
+        };
+
+        in python.pkgs.colorama;
+      expected = null;
+    };
+
     testKitchenSink = {
       expr =
         let
@@ -315,7 +335,7 @@
         expr = (fetchPDMPackage {
           inherit pyproject projectRoot;
           package = findPackage "ruamel-yaml-clib";
-        }).passthru;
+        });
         expectedError.type = "Error";
         expectedError.msg = "requires a Mercurial revision";
       };

@@ -33,8 +33,8 @@ let
 
   # Make the internal __pdm2nix overlay attribute.
   # This is used in the overlay to create PEP-508 environments & fetchers that don't need to be instantiated for every package.
-  mkPdm2Nix = { python, callPackage }: {
-    environ = pep508.mkEnviron python;
+  mkPdm2Nix = { python, callPackage, environ }: {
+    inherit environ;
     fetchPDMPackage = python.pkgs.callPackage self.fetchPDMPackage { };
     # TODO: Drop mkEditablePackage, it doesn't belong in pdm2nix.
     mkEditablePackage = callPackage editable.mkEditablePackage { };
@@ -65,12 +65,19 @@ in
     let
       pyVersion = pyproject-nix.lib.pep440.parseVersion prev.python.version;
 
-      # Filter pdm.lock based on requires_python
+      environ = pep508.mkEnviron prev.python;
+
+      # Filter pdm.lock based on requires_python/marker
       compatible = filter
-        (package: ! hasAttr "requires_python" package || (
-          lib.all
-            (spec: pyproject-nix.lib.pep440.comparators.${spec.op} pyVersion spec.version)
-            (pyproject-nix.lib.pep440.parseVersionConds package.requires_python)
+        (package:
+          # requires_python
+          (! package ? "requires_python" || (
+            lib.all
+              (spec: pyproject-nix.lib.pep440.comparators.${spec.op} pyVersion spec.version)
+              (pyproject-nix.lib.pep440.parseVersionConds package.requires_python))
+          &&
+          # marker
+          (! package ? "marker" || pep508.evalMarkers environ (pep508.parseMarkers package.marker))
         ))
         project.pdmLock.package;
 
@@ -128,7 +135,7 @@ in
 
     in
     {
-      __pdm2nix = final.callPackage mkPdm2Nix { };
+      __pdm2nix = final.callPackage mkPdm2Nix { inherit environ; };
     } // pkgs);
 
   partitionFiles =
@@ -279,6 +286,10 @@ in
       editable ? false # deadnix: skip
     , # Python constraint
       requires_python ? "" # deadnix: skip
+    , # Groups
+      groups ? [ ] # deadnix: skip
+    , # PEP-508 marker
+      marker ? "" # deadnix: skip
     }@package: (
       let
         inherit (self.partitionFiles files) wheels sdists eggs others;
@@ -292,7 +303,7 @@ in
       , pypaInstallHook
       , pythonManylinuxPackages
       , stdenv
-      , __pdm2nix ? callPackage mkPdm2Nix { }
+      , __pdm2nix ? callPackage mkPdm2Nix { environ = pep508.mkEnviron python; }
       , # Whether to prefer prebuilt binary wheels over sdists
         preferWheel ? preferWheels
       }:
