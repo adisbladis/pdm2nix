@@ -362,7 +362,7 @@ in
         }
         // optionalAttrs (format == "wheel") {
           # Don't strip prebuilt wheels
-          dontStrip = builtins.trace filename true;
+          dontStrip = true;
 
           # Add wheel utils
           nativeBuildInputs =
