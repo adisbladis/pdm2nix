@@ -41,7 +41,11 @@
           # need to supplement your own.
           #
           # See https://nixos.org/manual/nixpkgs/stable/#python section on overriding Python packages.
-          overrides = _final: _prev: { };
+          overrides = final: prev: {
+            arpeggio = prev.arpeggio.overridePythonAttrs(oldAttrs: {
+              nativeBuildInputs = oldAttrs.nativeBuildInputs or [ ] ++ [ final.setuptools ];
+            });
+          };
         in
         lib.composeExtensions overlay' overrides;
 
