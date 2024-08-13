@@ -42,7 +42,7 @@
           #
           # See https://nixos.org/manual/nixpkgs/stable/#python section on overriding Python packages.
           overrides = final: prev: {
-            arpeggio = prev.arpeggio.overridePythonAttrs(oldAttrs: {
+            arpeggio = prev.arpeggio.overridePythonAttrs (oldAttrs: {
               nativeBuildInputs = oldAttrs.nativeBuildInputs or [ ] ++ [ final.setuptools ];
             });
           };

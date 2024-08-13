@@ -78,7 +78,7 @@ in
           &&
           # marker
           (! package ? "marker" || pep508.evalMarkers environ (pep508.parseMarkers package.marker))
-        ))
+          ))
         project.pdmLock.package;
 
       # Create package set
