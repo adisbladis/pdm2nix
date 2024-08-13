@@ -8,9 +8,6 @@
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    proc-flake.url = "github:srid/proc-flake";
-    flake-root.url = "github:srid/flake-root";
-
     nix-github-actions.url = "github:nix-community/nix-github-actions";
     nix-github-actions.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -49,8 +46,6 @@
 
         imports = [
           # inputs.treefmt-nix.flakeModule
-          inputs.flake-root.flakeModule
-          inputs.proc-flake.flakeModule
         ];
 
         flake.githubActions = nix-github-actions.lib.mkGithubMatrix {
@@ -103,16 +98,12 @@
               }
             );
 
-            proc.groups.run.processes = {
-              nix-unittest.command = "${lib.getExe' pkgs.reflex "reflex"} -r '\.(nix)$' -- ${lib.getExe' pkgs.nix-unit "nix-unit"} --quiet --flake '.#libTests'";
-              mdbook.command = "(cd doc && mdbook serve)";
-            };
-
             devShells.default = pkgs.mkShell {
-              inputsFrom = [ config.flake-root.devShell ]; # Provides $FLAKE_ROOT in dev shell
               packages =
                 [
-                  config.proc.groups.run.package
+                  pkgs.hivemind
+                  pkgs.mdbook
+                  pkgs.reflex
                   pkgs.nix-unit
                   inputs.mdbook-nixdoc.packages.${system}.default
                   pkgs.pdm

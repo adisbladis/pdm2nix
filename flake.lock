@@ -36,21 +36,6 @@
         "type": "github"
       }
     },
-    "flake-root": {
-      "locked": {
-        "lastModified": 1713493429,
-        "narHash": "sha256-ztz8JQkI08tjKnsTpfLqzWoKFQF4JGu2LRz8bkdnYUk=",
-        "owner": "srid",
-        "repo": "flake-root",
-        "rev": "bc748b93b86ee76e2032eecda33440ceb2532fcd",
-        "type": "github"
-      },
-      "original": {
-        "owner": "srid",
-        "repo": "flake-root",
-        "type": "github"
-      }
-    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -215,21 +200,6 @@
         "type": "github"
       }
     },
-    "proc-flake": {
-      "locked": {
-        "lastModified": 1713493374,
-        "narHash": "sha256-w2XKCa27RxCu32PKnResrKEcnOV/S6Qh1sWBWCUSjJ8=",
-        "owner": "srid",
-        "repo": "proc-flake",
-        "rev": "7bf695fad8caec98c122f1641ddca5e36477223f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "srid",
-        "repo": "proc-flake",
-        "type": "github"
-      }
-    },
     "pyproject-nix": {
       "inputs": {
         "mdbook-nixdoc": "mdbook-nixdoc_2",
@@ -255,12 +225,10 @@
     "root": {
       "inputs": {
         "flake-parts": "flake-parts",
-        "flake-root": "flake-root",
         "mdbook-nixdoc": "mdbook-nixdoc",
         "nix-github-actions": "nix-github-actions_2",
         "nixdoc": "nixdoc",
         "nixpkgs": "nixpkgs",
-        "proc-flake": "proc-flake",
         "pyproject-nix": "pyproject-nix",
         "treefmt-nix": "treefmt-nix"
       }
