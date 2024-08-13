@@ -170,8 +170,15 @@
 
       callPackage = pkg:
         let
-          drv = pkgs.python311.pkgs.callPackage pkg {
+          py = pkgs.python311;
+
+          drv = py.pkgs.callPackage pkg {
             buildPythonPackage = x: x; # No-op to return attrs
+
+            __pdm2nix = {
+              fetchPDMPackage = py.pkgs.callPackage lock.fetchPDMPackage { };
+              environ = pyproject-nix.lib.pep508.mkEnviron py;
+            };
           };
 
           # Remove stuff we can't assert equality for easily

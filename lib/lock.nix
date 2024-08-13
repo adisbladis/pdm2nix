@@ -33,7 +33,7 @@ let
 
   # Make the internal __pdm2nix overlay attribute.
   # This is used in the overlay to create PEP-508 environments & fetchers that don't need to be instantiated for every package.
-  mkPdm2Nix = { python, callPackage, environ }: {
+  mkPdm2Nix = { python, callPackage, environ ? pep508.mkEnviron python }: {
     inherit environ;
     fetchPDMPackage = python.pkgs.callPackage self.fetchPDMPackage { };
     # TODO: Drop mkEditablePackage, it doesn't belong in pdm2nix.
@@ -77,8 +77,7 @@ in
               (pyproject-nix.lib.pep440.parseVersionConds package.requires_python))
           &&
           # marker
-          (! package ? "marker" || pep508.evalMarkers environ (pep508.parseMarkers package.marker))
-          ))
+          (! package ? "marker" || pep508.evalMarkers environ (pep508.parseMarkers package.marker))))
         project.pdmLock.package;
 
       # Create package set
@@ -296,14 +295,13 @@ in
       in
       { python
       , pythonPackages
-      , callPackage
       , buildPythonPackage
       , autoPatchelfHook
       , wheelUnpackHook
       , pypaInstallHook
       , pythonManylinuxPackages
       , stdenv
-      , __pdm2nix ? callPackage mkPdm2Nix { environ = pep508.mkEnviron python; }
+      , __pdm2nix
       , # Whether to prefer prebuilt binary wheels over sdists
         preferWheel ? preferWheels
       }:
