@@ -38,6 +38,7 @@ let
     fetchPDMPackage = python.pkgs.callPackage self.fetchPDMPackage { };
     # TODO: Drop mkEditablePackage, it doesn't belong in pdm2nix.
     mkEditablePackage = callPackage editable.mkEditablePackage { };
+    pyVersion = pyproject-nix.lib.pep440.parseVersion python.version;
   };
 
   optionalHead = list: if length list > 0 then head list else null;
@@ -61,27 +62,12 @@ in
     in
     assert project.pdmLock != null;
     assert lockMajor == "4";
-    (final: prev:
-    let
-      pyVersion = pyproject-nix.lib.pep440.parseVersion prev.python.version;
-
-      environ = pep508.mkEnviron prev.python;
-
-      # Filter pdm.lock based on requires_python/marker
-      compatible = filter
-        (package:
-          # requires_python
-          (! package ? "requires_python" || (
-            lib.all
-              (spec: pyproject-nix.lib.pep440.comparators.${spec.op} pyVersion spec.version)
-              (pyproject-nix.lib.pep440.parseVersionConds package.requires_python))
-          &&
-          # marker
-          (! package ? "marker" || pep508.evalMarkers environ (pep508.parseMarkers package.marker))))
-        project.pdmLock.package;
-
-      # Create package set
-      pkgs = lib.listToAttrs (
+    lib.composeExtensions
+      (final: _prev: {
+        __pdm2nix = final.callPackage mkPdm2Nix { };
+      })
+      (final: _prev:
+      lib.listToAttrs (
         map
           (package: lib.nameValuePair package.name (
             # Route package depending on source:
@@ -129,13 +115,8 @@ in
             # Package is from pdm.lock
             else (final.callPackage (self.mkPackage { inherit project preferWheels; } package) { })
           ))
-          compatible
-      );
-
-    in
-    {
-      __pdm2nix = final.callPackage mkPdm2Nix { inherit environ; };
-    } // pkgs);
+          project.pdmLock.package
+      ));
 
   partitionFiles =
     # List of files from poetry.lock -> package segment
@@ -292,6 +273,8 @@ in
     }@package: (
       let
         inherit (self.partitionFiles files) wheels sdists eggs others;
+        requiresPython = pyproject-nix.lib.pep440.parseVersionConds package.requires_python;
+
       in
       { python
       , pythonPackages
@@ -331,6 +314,11 @@ in
           inherit package filename;
         };
 
+        disabled =
+          if package ? "requires_python" && ! lib.all (spec: pyproject-nix.lib.pep440.comparators.${spec.op} __pdm2nix.pyVersion spec.version) requiresPython then true
+          else if package ? "marker" && ! (pep508.evalMarkers __pdm2nix.environ (pep508.parseMarkers marker)) then true
+          else false;
+
       in
       buildPythonPackage
         ({
@@ -358,6 +346,7 @@ in
             description = summary;
           };
         }
+        // optionalAttrs disabled { inherit disabled; }
         // optionalAttrs (format == "wheel") {
           # Don't strip prebuilt wheels
           dontStrip = true;

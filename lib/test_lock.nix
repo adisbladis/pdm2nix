@@ -77,7 +77,8 @@
 
         in
         python.pkgs.colorama;
-      expected = null;
+      expectedError.type = "ThrownError";
+      expectedError.msg = "not supported for interpreter";
     };
 
     testKitchenSink = {
@@ -178,6 +179,7 @@
             __pdm2nix = {
               fetchPDMPackage = py.pkgs.callPackage lock.fetchPDMPackage { };
               environ = pyproject-nix.lib.pep508.mkEnviron py;
+              pyVersion = pyproject-nix.lib.pep440.parseVersion py.version;
             };
           };
 
